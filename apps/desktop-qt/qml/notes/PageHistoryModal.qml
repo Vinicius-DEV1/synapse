@@ -28,9 +28,26 @@ Rectangle {
         return selectedIndex + 1 < history.length ? history[selectedIndex + 1] : null
     }
 
+    function selectedEntryHasDecryptionError() {
+        var entry = selectedEntry()
+        return Boolean(entry && entry.decryption_error)
+    }
+
+    function canShowDiff() {
+        var current = selectedEntry()
+        var previous = previousEntry()
+        return Boolean(current && previous && !current.decryption_error && !previous.decryption_error)
+    }
+
+    function canRestoreSelectedRevision() {
+        var entry = selectedEntry()
+        return Boolean(selectedIndex > 0 && entry && !entry.decryption_error
+                       && typeof entry.content === "string")
+    }
+
     function restoreSelectedRevision() {
         var entry = selectedEntry()
-        if (!entry || typeof entry.content !== "string") return
+        if (!canRestoreSelectedRevision()) return
         restoreRevisionRequested(entry.content)
         closeRequested()
     }
@@ -131,7 +148,8 @@ Rectangle {
                     objectName: "historyDiffToggleButton"
                     text: historyRoot.showDiff ? qsTr("Modo Diff Ativo ✓") : qsTr("Ver Diff")
                     flat: true
-                    visible: historyRoot.width >= 768 && historyRoot.previousEntry() !== null
+                    visible: historyRoot.width >= 768 && historyRoot.canShowDiff()
+                    enabled: historyRoot.canShowDiff()
                     onClicked: historyRoot.showDiff = !historyRoot.showDiff
                     contentItem: Text {
                         text: parent.text
@@ -145,6 +163,7 @@ Rectangle {
                     text: qsTr("Restaurar Esta Versão")
                     flat: true
                     visible: historyRoot.width >= 768 && historyRoot.selectedIndex > 0 && historyRoot.selectedEntry() !== null
+                    enabled: historyRoot.canRestoreSelectedRevision()
                     onClicked: historyRoot.restoreSelectedRevision()
                     contentItem: Text {
                         text: parent.text
@@ -197,13 +216,13 @@ Rectangle {
             MenuItem {
                 objectName: "historyDiffMenuItem"
                 text: historyRoot.showDiff ? qsTr("Desativar diff") : qsTr("Ativar diff")
-                enabled: historyRoot.previousEntry() !== null
+                enabled: historyRoot.canShowDiff()
                 onTriggered: historyRoot.showDiff = !historyRoot.showDiff
             }
             MenuItem {
                 objectName: "historyRestoreMenuItem"
                 text: qsTr("Restaurar esta versão")
-                enabled: historyRoot.selectedIndex > 0 && historyRoot.selectedEntry() !== null
+                enabled: historyRoot.canRestoreSelectedRevision()
                 onTriggered: historyRoot.restoreSelectedRevision()
             }
         }
@@ -299,13 +318,24 @@ Rectangle {
                             color: "#0affffff"
                         }
                         Text {
+                            objectName: "historyDecryptionError"
+                            Layout.fillWidth: true
+                            visible: historyRoot.selectedEntryHasDecryptionError()
+                            text: qsTr("Não foi possível descriptografar esta revisão. Desbloqueie o cofre ou verifique a chave antes de tentar novamente.")
+                            color: "#fda4af"
+                            font.pixelSize: 14
+                            wrapMode: Text.Wrap
+                            Accessible.role: Accessible.AlertMessage
+                        }
+                        Text {
                             objectName: "historyRevisionContent"
                             Layout.fillWidth: true
+                            visible: !historyRoot.selectedEntryHasDecryptionError()
                             text: {
                                 var current = historyRoot.selectedEntry()
                                 if (!current) return ""
                                 var prev = historyRoot.previousEntry()
-                                if (historyRoot.showDiff && prev) {
+                                if (historyRoot.showDiff && historyRoot.canShowDiff()) {
                                     return historyRoot.computeDiffHtml(prev.content || "", current.content || "")
                                 }
                                 return current.content || ""
