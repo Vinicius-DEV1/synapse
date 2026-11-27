@@ -983,3 +983,13 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | `/usr/lib/qt6/bin/qmllint -I apps/desktop-qt/qml apps/desktop-qt/qml/notes/NotesRichPageReferenceFlow.qml apps/desktop-qt/qml/notes/NotesRichPageReferenceMenu.qml apps/desktop-qt/qml/notes/NotesRichTextInput.qml` | Passed with no diagnostics | Parses the three changed production QML files. |
 | `git diff --check` | Passed | Checked the implementation and audit changes before the implementation commit. |
 | Matched-viewport React/Qt screenshots, resize/edge placement, screen-reader/focus review, and clicks outside the editor viewport | Not run | Keep QT-NOTES-101 partial; the native click catcher currently covers the editor bounds, while React listens on the full document. |
+
+
+### Page-deletion event impact accuracy (2026-11-27)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop-tests -j2` | Passed | Rebuilt the production delete-dialog QtTest harness. |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen apps/desktop-qt/build/synapse-desktop-tests --suite=notes-history` | Passed: 5 behavior tests (9 QtTest rows across history and keyboard harnesses, including setup/cleanup) | The deletion dialog shows two non-expired subtree events with persistent `page_id` links and one active inline-only event. It counts two Core-deletable events, identifies one inline-only reference as remaining in the Agenda, and excludes expired/unrelated records. Also exercises the existing history UI/keyboard checks. It uses a mock controller for the deletion modal and does not perform a real Core delete/restore transaction. |
+| `/usr/lib/qt6/bin/qmllint -I apps/desktop-qt/qml apps/desktop-qt/qml/notes/NotesDeleteDialog.qml apps/desktop-qt/qml/notes/NotesDeleteEventsWarning.qml` | Passed with no diagnostics | Parses the updated production deletion dialog and warning panel. |
+| Real Core soft-delete/restore with both linked and inline-only events; React behavior at matched viewport | Not run | Core source confirms only subtree `page_id` links are soft-deleted. Keep QT-NOTES-102 open until a real persistence test and matched visual/copy review are recorded. |
