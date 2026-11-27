@@ -15,6 +15,7 @@ pub mod metadata;
 pub mod models;
 pub mod pages;
 pub mod plain_text;
+pub mod search_replace;
 pub mod table_schema;
 #[cfg(test)]
 pub mod tests;
@@ -26,10 +27,7 @@ pub use block_ast::{
     serialize_note_blocks, split_rich_html_at_text_offset, NoteBlock,
 };
 pub use crdt_hydrator::hydrate_html_from_crdt;
-pub use diff_engine::{
-    apply_search_replace, compute_word_diff_html, parse_search_replace_blocks, SearchReplaceBlock,
-    SearchReplaceResult,
-};
+pub use diff_engine::compute_word_diff_html;
 pub use html_normalizer::normalize_tiptap_rich_html;
 pub use link_index::{
     build_default_link_entity_json, canonical_link_url, find_duplicate_links, normalize_link_url,
@@ -37,6 +35,9 @@ pub use link_index::{
 };
 pub use mermaid_svg::{render_mermaid_data_uri, render_mermaid_svg};
 pub use models::{LinkMetadata, PageMetaRecord, PageNode, PageRecord, PageRevision};
+pub use search_replace::{
+    apply_search_replace, parse_search_replace_blocks, SearchReplaceBlock, SearchReplaceResult,
+};
 pub use table_schema::{
     evaluate_table_filter, evaluate_table_filter_at, filter_table_rows_for_view, move_table_column,
     move_table_column_at, move_table_row, move_table_row_at, parse_table_columns,

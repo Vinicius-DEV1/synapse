@@ -24,7 +24,7 @@ private:
     }
 
 private slots:
-    void searchReplaceUsesCoreExactCrlfAndTrimmedFallbacks() {
+    void searchReplaceUsesCoreParsingAndWhitespaceMatching() {
         SynapseDataController controller(nullptr, false);
 
         QVariantMap result = controller.applyNoteSearchReplace(
@@ -56,6 +56,22 @@ private slots:
         QVERIFY(result.value(QStringLiteral("success")).toBool());
         QCOMPARE(result.value(QStringLiteral("replacedCount")).toInt(), 0);
         QCOMPARE(result.value(QStringLiteral("result")).toString(), QStringLiteral("unchanged"));
+
+        result = controller.applyNoteSearchReplace(
+            QStringLiteral("old value\nsecond"),
+            QStringLiteral("broken <<<<<<< SEARCH without a separator\n"
+                           "<<<<<<<< SEARCH  \nold value\n=======  \nnew value\n>>>>>>>\n"
+                           "<<<<<<< SEARCH\nsecond\n=======\nchanged\n>>>>>>>"));
+        QVERIFY(result.value(QStringLiteral("success")).toBool());
+        QCOMPARE(result.value(QStringLiteral("replacedCount")).toInt(), 2);
+        QCOMPARE(result.value(QStringLiteral("result")).toString(), QStringLiteral("new value\nchanged"));
+
+        result = controller.applyNoteSearchReplace(
+            QStringLiteral("before target after"),
+            QStringLiteral("<<<<<<< SEARCH\ntarget\n=======\n[$$][$&][$`][$']\n>>>>>>>"));
+        QVERIFY(result.value(QStringLiteral("success")).toBool());
+        QCOMPARE(result.value(QStringLiteral("result")).toString(),
+                 QStringLiteral("before [$][target][before ][ after] after"));
     }
 
     void convertsInlineGfmAndKeepsUnsafeTargetsInactive() {
