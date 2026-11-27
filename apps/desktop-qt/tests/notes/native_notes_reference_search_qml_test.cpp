@@ -132,10 +132,12 @@ private slots:
         QVERIFY(flowItem);
         QVERIFY(flowItem->width() > 0.0);
         QVERIFY(flowItem->height() > 0.0);
+        const int cursorBeforeOutsideClick = textEdit->property("cursorPosition").toInt();
         const QPointF outsidePoint = flowItem->mapToItem(window.contentItem(),
             QPointF(flowItem->width() - 4.0, flowItem->height() - 4.0));
         QTest::mouseClick(&window, Qt::LeftButton, Qt::NoModifier, outsidePoint.toPoint());
         QTRY_VERIFY(!pageMenu->property("visible").toBool());
+        QTRY_VERIFY(textEdit->property("cursorPosition").toInt() != cursorBeforeOutsideClick);
     }
 };
 
