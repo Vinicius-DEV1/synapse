@@ -243,7 +243,7 @@ Rectangle {
             var c = controller
             if (!c || typeof c.parseNoteBlocks !== "function") return null
             var rawHtml = String(html || "")
-            var blocks = c.parseNoteBlocks(rawHtml) || []
+            var blocks = DocumentBundleOperations.toArray(c.parseNoteBlocks(rawHtml))
             if (!Array.isArray(blocks) || (blocks.length === 0 && rawHtml.trim().length > 0)) return null
 
             var looseFiles = DocumentBundleOperations.collectLooseFileWidgets(
@@ -323,7 +323,6 @@ Rectangle {
             if (!finishPendingFileTrashAfterSaveRequests(selectedPageId, activeContent)) {
                 saveStatus = "error"
                 console.warn("[Notes:PageView] The note was saved, but one or more files remain outside the local Trash.")
-                return false
             }
             return true
         }

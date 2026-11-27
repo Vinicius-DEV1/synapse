@@ -3,6 +3,7 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import "NotesJsonAttribute.js" as NotesJsonAttribute
+import "DocumentBundleOperations.js" as DocumentBundleOperations
 import "../ui"
 
 Item {
@@ -50,7 +51,7 @@ Item {
         var inner = blockData.innerHtml || ""
         var c = linkGroupRoot.controller
         if (inner.length > 0 && c && typeof c.parseNoteBlocks === "function") {
-            var parsed = c.parseNoteBlocks(inner) || []
+            var parsed = DocumentBundleOperations.toArray(c.parseNoteBlocks(inner))
             var cards = parsed.filter(function(b) { return b.blockType === "linkPreview" })
             if (cards.length > 0) return { cards: cards, usesLegacyData: false, valid: true }
         }

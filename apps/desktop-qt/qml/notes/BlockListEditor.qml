@@ -92,7 +92,7 @@ ColumnLayout {
         focusedRichSliceBlockId = ""
         selectedFileWidgetBlockId = ""
         lastLoadedPageId = pageId
-        blocks = controller.parseNoteBlocks(sourceHtml || "") || []
+        blocks = DocumentBundleOperations.toArray(controller.parseNoteBlocks(sourceHtml || ""))
         looseFileWidgetsRevision += 1
         lastEmittedHtml = sourceHtml || ""
         isSyncingFromSource = false
@@ -336,8 +336,9 @@ ColumnLayout {
         if (!controller || typeof controller.parseNoteBlocks !== "function" ||
                 typeof controller.serializeNoteBlocks !== "function") return false
         var hasWidgetHtml = Boolean(widgetHtml && widgetHtml.trim().length > 0)
-        var parsed = hasWidgetHtml ? controller.parseNoteBlocks(widgetHtml) : []
-        if (!Array.isArray(parsed) || (hasWidgetHtml && parsed.length === 0)) return false
+        var parsed = hasWidgetHtml
+            ? DocumentBundleOperations.toArray(controller.parseNoteBlocks(widgetHtml)) : []
+        if (hasWidgetHtml && parsed.length === 0) return false
         var next = blocks.slice()
         var splitPosition = typeof cursorPosition === "number" ? cursorPosition
             : (focusedRichSlice && focusedRichSliceBlockId === (next[idx] ? next[idx].id : "") &&
@@ -488,7 +489,7 @@ ColumnLayout {
         var next = blocks.slice(); var replacements = []
         for (var c = 0; c < columnsList.length; ++c) {
             var parsed = controller && typeof controller.parseNoteBlocks === "function"
-                ? (controller.parseNoteBlocks(columnsList[c] || "<p></p>") || []) : []
+                ? DocumentBundleOperations.toArray(controller.parseNoteBlocks(columnsList[c] || "<p></p>")) : []
             for (var j = 0; j < parsed.length; ++j) replacements.push(parsed[j])
         }
         if (replacements.length === 0) replacements.push({ id: "blk_uw_" + Date.now(), blockType: "richText", attrs: ({}), html: "<p><br/></p>", innerHtml: "<p><br/></p>" })

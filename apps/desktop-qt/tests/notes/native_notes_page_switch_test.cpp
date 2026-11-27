@@ -14,7 +14,9 @@ class PageSwitchTestController final : public QObject {
 public:
     int saveCalls = 0;
     bool failNextSave = false;
+    bool failNextDelete = false;
     bool conflictNextSave = false;
+    int deleteCalls = 0;
     QString latestPageTwoContent = QStringLiteral("<p>Saved page two</p>");
     QString latestPageTwoTimestamp = QStringLiteral("2026-11-01T00:00:00Z");
     QString lastSavedPageId;
@@ -22,15 +24,29 @@ public:
     QString lastExpectedTimestamp;
 
     Q_INVOKABLE QVariantList getPageTree(const QString &) const {
-        return {page("page-one", "<p>Saved page one</p>", "2026-11-01T00:00:00Z"),
+        return {page("page-one", "", "2026-11-01T00:00:00Z"),
                 page("page-two", latestPageTwoContent, latestPageTwoTimestamp)};
     }
 
     Q_INVOKABLE QVariantList getPinnedPages() const { return {}; }
 
+    Q_INVOKABLE QVariantList parseNoteBlocks(const QString &content) const {
+        if (content.isEmpty()) return {};
+        return {QVariantMap{{QStringLiteral("blockType"), QStringLiteral("richText")}}};
+    }
+
+    Q_INVOKABLE bool deleteFile(const QString &) {
+        ++deleteCalls;
+        if (failNextDelete) {
+            failNextDelete = false;
+            return false;
+        }
+        return true;
+    }
+
     Q_INVOKABLE QVariantMap getPage(const QString &pageId) const {
         if (pageId == QStringLiteral("page-one")) {
-            return page(pageId, "<p>Saved page one</p>", "2026-11-01T00:00:00Z");
+            return page(pageId, "", "2026-11-01T00:00:00Z");
         }
         if (pageId == QStringLiteral("page-two")) {
             return page(pageId, latestPageTwoContent, latestPageTwoTimestamp);
@@ -89,11 +105,8 @@ private:
 class NativeNotesPageSwitchTest final : public QObject {
     Q_OBJECT
 
-private slots:
-    void failedSaveKeepsCurrentPageAndAllowsRetry() {
-        QQmlEngine engine;
-        NotesTextOperations textOperations;
-        PageSwitchTestController controller;
+    static QObject *createPageView(QQmlEngine &engine, NotesTextOperations &textOperations,
+                                   PageSwitchTestController &controller, QString &componentError) {
         engine.rootContext()->setContextProperty(QStringLiteral("notesTextOperations"), &textOperations);
         engine.rootContext()->setContextProperty(QStringLiteral("dataController"), &controller);
         engine.rootContext()->setContextProperty(QStringLiteral("theme"), QVariantMap{
@@ -108,8 +121,19 @@ private slots:
         QQmlComponent component(&engine);
         component.loadUrl(QUrl::fromLocalFile(QStringLiteral(SYNAPSE_DESKTOP_SOURCE_DIR)
                                              + QStringLiteral("/qml/page-view/PageView.qml")));
-        QScopedPointer<QObject> pageView(component.create());
-        QVERIFY2(pageView, qPrintable(component.errorString()));
+        QObject *pageView = component.create();
+        if (!pageView) componentError = component.errorString();
+        return pageView;
+    }
+
+private slots:
+    void failedSaveKeepsCurrentPageAndAllowsRetry() {
+        QQmlEngine engine;
+        NotesTextOperations textOperations;
+        PageSwitchTestController controller;
+        QString componentError;
+        QScopedPointer<QObject> pageView(createPageView(engine, textOperations, controller, componentError));
+        QVERIFY2(pageView, qPrintable(componentError));
         pageView->setProperty("controller", QVariant::fromValue(static_cast<QObject *>(&controller)));
         QVERIFY(QMetaObject::invokeMethod(pageView.data(), "refreshPageTree"));
         QTRY_COMPARE(pageView->property("selectedPageId").toString(), QStringLiteral("page-one"));
@@ -138,26 +162,62 @@ private slots:
         QCOMPARE(pageView->property("selectedPageId").toString(), QStringLiteral("page-two"));
     }
 
+    void failedFileTrashAfterSavedNoteDoesNotBlockNavigationAndRetries() {
+        QQmlEngine engine;
+        NotesTextOperations textOperations;
+        PageSwitchTestController controller;
+        QString componentError;
+        QScopedPointer<QObject> pageView(createPageView(engine, textOperations, controller, componentError));
+        QVERIFY2(pageView, qPrintable(componentError));
+        pageView->setProperty("controller", QVariant::fromValue(static_cast<QObject *>(&controller)));
+        QVERIFY(QMetaObject::invokeMethod(pageView.data(), "refreshPageTree"));
+        QTRY_COMPARE(pageView->property("selectedPageId").toString(), QStringLiteral("page-one"));
+
+        pageView->setProperty("activeContent", QString());
+        pageView->setProperty("isDirty", true);
+        QVariant queueResult;
+        QVERIFY(QMetaObject::invokeMethod(pageView.data(), "queueFileTrashAfterSave",
+                                          Q_RETURN_ARG(QVariant, queueResult),
+                                          Q_ARG(QVariant, QVariant(QStringLiteral("file-one")))));
+        QVERIFY(queueResult.toBool());
+        QVariant referenceResult;
+        QVERIFY(QMetaObject::invokeMethod(pageView.data(), "noteReferencesFile",
+                                          Q_RETURN_ARG(QVariant, referenceResult),
+                                          Q_ARG(QVariant, QVariant(QString())),
+                                          Q_ARG(QVariant, QVariant(QStringLiteral("file-one")))));
+        QVERIFY(referenceResult.isValid());
+        QVERIFY(!referenceResult.toBool());
+        controller.failNextDelete = true;
+
+        QVariant selectionResult;
+        QVERIFY(QMetaObject::invokeMethod(pageView.data(), "selectPage",
+                                          Q_RETURN_ARG(QVariant, selectionResult),
+                                          Q_ARG(QVariant, QVariant(QStringLiteral("page-two")))));
+        QVERIFY(selectionResult.toBool());
+        QCOMPARE(pageView->property("selectedPageId").toString(), QStringLiteral("page-two"));
+        QVERIFY(!pageView->property("isDirty").toBool());
+        QVariantList pending = pageView->property("pendingFileTrashAfterSaveRequests").toList();
+        QCOMPARE(pending.size(), 1);
+        QCOMPARE(pending.first().toMap().value(QStringLiteral("pageId")).toString(),
+                 QStringLiteral("page-one"));
+        QCOMPARE(pending.first().toMap().value(QStringLiteral("fileId")).toString(),
+                 QStringLiteral("file-one"));
+
+        QVERIFY(QMetaObject::invokeMethod(pageView.data(), "selectPage",
+                                          Q_RETURN_ARG(QVariant, selectionResult),
+                                          Q_ARG(QVariant, QVariant(QStringLiteral("page-one")))));
+        QVERIFY(selectionResult.toBool());
+        QCOMPARE(controller.deleteCalls, 2);
+        QVERIFY(pageView->property("pendingFileTrashAfterSaveRequests").toList().isEmpty());
+    }
+
     void conflictCanKeepLocalOrLoadSavedVersionBeforeNavigating() {
         QQmlEngine engine;
         NotesTextOperations textOperations;
         PageSwitchTestController controller;
-        engine.rootContext()->setContextProperty(QStringLiteral("notesTextOperations"), &textOperations);
-        engine.rootContext()->setContextProperty(QStringLiteral("dataController"), &controller);
-        engine.rootContext()->setContextProperty(QStringLiteral("theme"), QVariantMap{
-            {QStringLiteral("bgDarkBg"), QStringLiteral("#0f0e17")},
-            {QStringLiteral("fontFamily"), QStringLiteral("Inter, sans-serif")},
-            {QStringLiteral("textSubtext"), QStringLiteral("#a7a9be")},
-            {QStringLiteral("textDark"), QStringLiteral("#fffffe")},
-            {QStringLiteral("brand600"), QStringLiteral("#7c3aed")},
-            {QStringLiteral("textMuted"), QStringLiteral("#71717a")},
-            {QStringLiteral("fontMono"), QStringLiteral("monospace")},
-        });
-        QQmlComponent component(&engine);
-        component.loadUrl(QUrl::fromLocalFile(QStringLiteral(SYNAPSE_DESKTOP_SOURCE_DIR)
-                                             + QStringLiteral("/qml/page-view/PageView.qml")));
-        QScopedPointer<QObject> pageView(component.create());
-        QVERIFY2(pageView, qPrintable(component.errorString()));
+        QString componentError;
+        QScopedPointer<QObject> pageView(createPageView(engine, textOperations, controller, componentError));
+        QVERIFY2(pageView, qPrintable(componentError));
         pageView->setProperty("controller", QVariant::fromValue(static_cast<QObject *>(&controller)));
         QVERIFY(QMetaObject::invokeMethod(pageView.data(), "refreshPageTree"));
         QTRY_COMPARE(pageView->property("selectedPageId").toString(), QStringLiteral("page-one"));

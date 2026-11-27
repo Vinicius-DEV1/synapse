@@ -50,6 +50,15 @@ private slots:
         pageView->setProperty("controller", QVariant::fromValue(static_cast<QObject *>(&controller)));
         QVERIFY(QMetaObject::invokeMethod(pageView.data(), "refreshPageTree"));
 
+        QVariant referenceResult;
+        QVERIFY(QMetaObject::invokeMethod(pageView.data(), "noteReferencesFile",
+                                          Q_RETURN_ARG(QVariant, referenceResult),
+                                          Q_ARG(QVariant, QVariant(QStringLiteral("<p>Initial content</p>"))),
+                                          Q_ARG(QVariant, QVariant(QStringLiteral("missing-file")))));
+        QVERIFY(referenceResult.isValid());
+        QCOMPARE(referenceResult.metaType(), QMetaType::fromType<bool>());
+        QVERIFY(!referenceResult.toBool());
+
         pageView->setProperty("selectedPageId", firstPageId);
         QVERIFY(QMetaObject::invokeMethod(pageView.data(), "loadActivePage"));
         QCOMPARE(pageView->property("activeContent").toString(), QStringLiteral("<p>Initial content</p>"));
