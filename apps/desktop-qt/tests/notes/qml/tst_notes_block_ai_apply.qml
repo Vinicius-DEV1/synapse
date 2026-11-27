@@ -197,6 +197,52 @@ TestCase {
         compare(capturedAiSelection, "Nested\nold")
     }
 
+    function test_toggleAssistantActionAppliesToItsStableBlock() {
+        editor.blocks = [{
+            id: "toggle-target",
+            blockType: "toggleBlock",
+            attrs: { "data-title": "Current title", "data-is-open": "true" },
+            html: "",
+            innerHtml: "<p>Current body</p>"
+        }]
+        tryVerify(function() { return findChild(editor, "notesToggleBlockAiButton") !== null })
+
+        var aiButton = findChild(editor, "notesToggleBlockAiButton")
+        verify(aiButton !== null)
+        aiButton.clicked()
+        verify(typeof capturedApplyHandler === "function")
+        compare(capturedApplyHandler.sessionId, "page-1::toggle-target")
+        compare(capturedApplyHandler.blockType, "toggleBlock")
+        verify(capturedApplyHandler.call(null, "Title: Revised title\nRevised body", false))
+        compare(editor.blocks[0].id, "toggle-target")
+        compare(editor.blocks[0].attrs["data-title"], "Revised title")
+        verify(editor.blocks[0].innerHtml.indexOf("Revised body") >= 0)
+    }
+
+    function test_blockquoteToggleAssistantActionKeepsItsCalloutType() {
+        editor.blocks = [{
+            id: "callout-toggle-target",
+            blockType: "blockquoteToggle",
+            attrs: { "class": "blockquote-toggle", "data-color": "#3b82f6", "data-title": "Current title" },
+            html: "",
+            innerHtml: "<p>Current body</p>"
+        }]
+        tryVerify(function() { return findChild(editor, "notesToggleBlockAiButton") !== null })
+
+        var aiButton = findChild(editor, "notesToggleBlockAiButton")
+        verify(aiButton !== null)
+        aiButton.clicked()
+        verify(typeof capturedApplyHandler === "function")
+        compare(capturedApplyHandler.sessionId, "page-1::callout-toggle-target")
+        compare(capturedApplyHandler.blockType, "blockquoteToggle")
+        verify(capturedApplyHandler.call(null, "Title: Revised callout\nRevised body", false))
+        compare(editor.blocks[0].id, "callout-toggle-target")
+        compare(editor.blocks[0].blockType, "blockquoteToggle")
+        compare(editor.blocks[0].attrs["data-title"], "Revised callout")
+        compare(editor.blocks[0].attrs["data-color"], "#3b82f6")
+        verify(editor.blocks[0].innerHtml.indexOf("Revised body") >= 0)
+    }
+
     function test_coreParsedResultMustRemainTheSameBlockType() {
         var original = JSON.stringify(editor.blocks[0])
         parsedBlocks = [{ id: "fresh-id", blockType: "codeBlock", attrs: { code: "parsed", language: "js" }, html: "", innerHtml: "" }]
