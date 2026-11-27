@@ -166,7 +166,7 @@ TestCase {
         var assistantText = findChild(assistantRow, "notesAiMessageText")
         compare(userText.textFormat, Text.PlainText)
         compare(assistantText.textFormat, Text.RichText)
-        verify(assistantText.text.indexOf("<ul>") >= 0)
+        verify(assistantText.text.indexOf("Summary") >= 0)
     }
 
     function test_conversationScrollsToTheNewestMessages() {
@@ -236,7 +236,9 @@ TestCase {
         var olderDiff = findChild(firstAssistant, "notesAiDiffMessage")
         olderDiff.clicked()
         compare(modal.diffMessageIndex, 1)
-        verify(findChild(firstAssistant, "notesAiMessageText").text.indexOf("<ins>") >= 0)
+        verify(findChild(firstAssistant, "notesAiDiffHeader") !== null)
+        verify(findChild(firstAssistant, "notesAiDiffMessageText").text.indexOf("newValue") >= 0)
+        compare(findChild(modal, "notesAiPromptCard").width, 420)
 
         findChild(firstAssistant, "notesAiApplyMessage").clicked()
         compare(appliedValue, "```js\nconst newValue = 2;\n```")
@@ -251,5 +253,38 @@ TestCase {
         findChild(latestRow, "notesAiInsertMessage").clicked()
         compare(insertedText, "const insertedValue = 4;")
         verify(!modal.isOpen)
+    }
+
+    function test_surgicalDiffShowsReactEquivalentHeaderAndCount() {
+        var sourceBlock = {
+            id: "surgical-1",
+            blockType: "codeBlock",
+            attrs: { code: "const first = 1;\nconst second = 2;", language: "js" },
+            html: "",
+            innerHtml: "const first = 1;\nconst second = 2;"
+        }
+        var applyHandler = function() { return true }
+        applyHandler.sourceBlockState = JSON.stringify(sourceBlock)
+        applyHandler.blockType = "codeBlock"
+        modal.controller = {
+            copyToClipboard: function() {},
+            computeNoteWordDiffHtml: function(before, after) { return "<del>" + before + "</del><ins>" + after + "</ins>" }
+        }
+        modal.openModal("", sourceBlock.innerHtml, applyHandler)
+        modal.chatHistory = [{
+            role: "assistant",
+            content: "<<<<<<< SEARCH\nconst first = 1;\n=======\nconst first = 10;\n>>>>>>>"
+        }]
+        wait(20)
+
+        var row = findChild(modal, "notesAiMessagesRepeater").itemAt(0)
+        findChild(row, "notesAiDiffMessage").clicked()
+        var header = findChild(row, "notesAiDiffHeader")
+        verify(row.showingProposalDiff)
+        verify(row.proposal.isSearchReplace)
+        compare(row.proposal.searchReplaceCount, 1)
+        compare(header.height, 18)
+        compare(findChild(row, "notesAiDiffCountText").text, "1 cirúrgica(s)")
+        verify(findChild(row, "notesAiDiffViewer").height <= 220)
     }
 }
