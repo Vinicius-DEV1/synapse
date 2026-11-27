@@ -1,5 +1,6 @@
 #include "controllers/notes/notes_text_operations.h"
 #include "native_notes_page_switch_test_support.h"
+#include "synapse_controller.h"
 
 #include <QtQml/QQmlComponent>
 #include <QtQml/QQmlContext>
@@ -115,6 +116,38 @@ private slots:
         QVERIFY(saved.toBool());
         QCOMPARE(controller.lastSavedContent, restoredContent);
         QVERIFY(!pageView->property("isDirty").toBool());
+    }
+
+    void richHtmlHistoryDiffDisplaysTextWithoutMarkup() {
+        SynapseDataController controller(nullptr, false);
+        QQmlEngine engine;
+        engine.rootContext()->setContextProperty(QStringLiteral("dataController"), &controller);
+        engine.rootContext()->setContextProperty(QStringLiteral("theme"), QVariantMap{
+            {QStringLiteral("bgDarkBg"), QStringLiteral("#0f0e17")},
+            {QStringLiteral("fontFamily"), QStringLiteral("Inter, sans-serif")},
+            {QStringLiteral("textSubtext"), QStringLiteral("#a7a9be")},
+            {QStringLiteral("textDark"), QStringLiteral("#fffffe")},
+            {QStringLiteral("brand600"), QStringLiteral("#7c3aed")},
+            {QStringLiteral("textMuted"), QStringLiteral("#71717a")},
+            {QStringLiteral("fontMono"), QStringLiteral("monospace")},
+        });
+        QQmlComponent component(&engine);
+        component.loadUrl(QUrl::fromLocalFile(QStringLiteral(SYNAPSE_DESKTOP_SOURCE_DIR)
+                                             + QStringLiteral("/qml/notes/PageHistoryModal.qml")));
+        QScopedPointer<QObject> modal(component.create());
+        QVERIFY2(modal, qPrintable(component.errorString()));
+        modal->setProperty("controller", QVariant::fromValue(static_cast<QObject *>(&controller)));
+
+        QVariant diff;
+        QVERIFY(QMetaObject::invokeMethod(modal.data(), "computeDiffHtml",
+                                          Q_RETURN_ARG(QVariant, diff),
+                                          Q_ARG(QVariant, QVariant(QStringLiteral("<p>One stable word</p>"))),
+                                          Q_ARG(QVariant, QVariant(QStringLiteral("<p>One changed word</p>")))));
+        const QString renderedDiff = diff.toString();
+        QVERIFY(renderedDiff.contains(QStringLiteral("One")));
+        QVERIFY(renderedDiff.contains(QStringLiteral("stable")));
+        QVERIFY(renderedDiff.contains(QStringLiteral("changed")));
+        QVERIFY(!renderedDiff.contains(QStringLiteral("&lt;")));
     }
 };
 

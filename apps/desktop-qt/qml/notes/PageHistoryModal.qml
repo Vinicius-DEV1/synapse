@@ -47,7 +47,14 @@ Rectangle {
         }
         var c = historyRoot.controller || (typeof dataController !== "undefined" ? dataController : null)
         if (c && typeof c.computeNoteWordDiffHtml === "function") {
-            return c.computeNoteWordDiffHtml(oldText, newText)
+            var oldValue = oldText
+            var newValue = newText
+            if (isHtmlDocument(oldText) || isHtmlDocument(newText)) {
+                if (typeof c.noteHtmlToPlainText !== "function") return newText
+                oldValue = c.noteHtmlToPlainText(oldText)
+                newValue = c.noteHtmlToPlainText(newText)
+            }
+            return c.computeNoteWordDiffHtml(oldValue, newValue).replace(/\r?\n/g, "<br/>")
         }
         return newText
     }

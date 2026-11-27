@@ -174,6 +174,7 @@ public:
     Q_INVOKABLE QVariantList parseNoteBlocks(const QString &html);
     Q_INVOKABLE QString serializeNoteBlocks(const QVariantList &blocks);
     Q_INVOKABLE QVariantMap applyNoteSearchReplace(const QString &original, const QString &aiResponse);
+    Q_INVOKABLE QString noteHtmlToPlainText(const QString &html) const;
     Q_INVOKABLE QString computeNoteWordDiffHtml(const QString &oldText, const QString &newText);
     Q_INVOKABLE QVariantList findDuplicateNoteLinks(const QString &url, const QString &excludePageId = "");
     Q_INVOKABLE QVariantMap splitRichHtml(const QString &html, int textOffset);

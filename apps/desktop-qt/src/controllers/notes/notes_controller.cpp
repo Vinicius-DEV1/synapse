@@ -4,6 +4,7 @@
 #include <QtCore/QJsonArray>
 #include <QtCore/QJsonDocument>
 #include <QtCore/QJsonObject>
+#include <QtGui/QTextDocument>
 
 // ---------------------------------------------------------------------------
 // 1. Notes and hierarchical pages
@@ -307,6 +308,12 @@ QVariantMap SynapseDataController::applyNoteSearchReplace(const QString &origina
     synapse_free_string(raw);
     const QJsonDocument doc = QJsonDocument::fromJson(json);
     return doc.isObject() ? doc.object().toVariantMap() : QVariantMap();
+}
+
+QString SynapseDataController::noteHtmlToPlainText(const QString &html) const {
+    QTextDocument document;
+    document.setHtml(html);
+    return document.toPlainText();
 }
 
 QString SynapseDataController::computeNoteWordDiffHtml(const QString &oldText, const QString &newText) {
