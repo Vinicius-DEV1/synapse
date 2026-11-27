@@ -1,5 +1,15 @@
 # Caderno Verification Plan
 
+### Page deletion event-impact iteration (2026-11-27)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `/usr/lib/qt6/bin/qmllint -I apps/desktop-qt/qml apps/desktop-qt/qml/notes/NotesDeleteDialog.qml apps/desktop-qt/qml/notes/NotesDeleteEventsWarning.qml apps/desktop-qt/qml/notes/NotesEditorModalsHost.qml apps/desktop-qt/qml/page-view/PageViewModalsHost.qml` | Passed, exit code 0; existing dynamic-loader `QObject` type warnings remain in the two modal hosts | Both changed delete-dialog QML components parse with no diagnostics. Host warnings predate this change; lint does not establish geometry, keyboard/focus or Core mutation behavior. |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop -j2` | Passed | Rebuilt the native application after the QML host/property changes. |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop-tests -j2` | Passed | Rebuilt the focused native test binary with the new delete-dialog fixture. |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen apps/desktop-qt/build/synapse-desktop-tests --suite=notes-history` | Passed: 9 QtTest rows across page history and page-history keyboard suites | New test opens the actual Notes delete QML, checks target/subtree direct links, active-page inline reference, excludes expired and unrelated events, verifies the event warning/list/count label, and dismisses with Cancel. Other rows cover the production PageView modal route and page-history behavior. No live Core delete or restore was run. |
+| Matched-viewport screenshot, no-event state, full event-list scroll/truncation, small-window clipping, keyboard/focus, live Core delete/restore, inline-linked events in unloaded descendants | Not run | Keep QT-NOTES-100 and its checklist items open until visible application and persistence evidence exists. |
+
 ### Move Page dialog iteration (2026-11-27)
 
 | Check | Result | Scope and limits |
