@@ -979,10 +979,12 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | Check | Result | Scope and limits |
 | --- | --- | --- |
 | `cmake --build apps/desktop-qt/build --target synapse-notes-rich-qml-tests -j2` | Passed | Rebuilds the production QML test harness for the Notes page-reference flow. |
-| `QT_QPA_PLATFORM=offscreen apps/desktop-qt/build/synapse-notes-rich-qml-tests --suite=page-reference-search` | Passed: 1 behavior test (3 QtTest rows including setup/cleanup) | Loads `NotesRichTextInput.qml` through the production `NotesRichTableHarness.qml`; verifies visible popover geometry, 288×320 upper bounds, debounce, stale request cancellation/rejection, current content-search result and click-outside close inside the editor viewport. It does not use the real Core controller/database or verify save/reopen. |
+| `QT_QPA_PLATFORM=offscreen apps/desktop-qt/build/synapse-notes-rich-qml-tests --suite=page-reference-search` | Passed: 1 behavior test (3 QtTest rows including setup/cleanup) | Loads `NotesRichTextInput.qml` through the production `NotesRichTableHarness.qml`; verifies visible popover geometry, 288×320 upper bounds, debounce, stale request cancellation/rejection, current content-search result, outside-tap dismissal and native caret movement from that same click. It does not use the real Core controller/database or verify save/reopen. |
 | `/usr/lib/qt6/bin/qmllint -I apps/desktop-qt/qml apps/desktop-qt/qml/notes/NotesRichPageReferenceFlow.qml apps/desktop-qt/qml/notes/NotesRichPageReferenceMenu.qml apps/desktop-qt/qml/notes/NotesRichTextInput.qml` | Passed with no diagnostics | Parses the three changed production QML files. |
 | `git diff --check` | Passed | Checked the implementation and audit changes before the implementation commit. |
 | Matched-viewport React/Qt screenshots, resize/edge placement, screen-reader/focus review, and clicks outside the editor viewport | Not run | Keep QT-NOTES-101 partial; the native click catcher currently covers the editor bounds, while React listens on the full document. |
+
+The same focused `page-reference-search` command was rerun after replacing the swallowing `MouseArea` with a passive `TapHandler`; it passed all 3 rows and confirmed `cursorPosition` changes. `qmllint` on `NotesRichPageReferenceFlow.qml`, `NotesRichPageReferenceMenu.qml` and `NotesRichTextInput.qml` passed with no diagnostics. The production harness checks a simple click; drag selection and pointer activity outside the editor viewport remain unverified (QT-NOTES-103).
 
 
 ### Page-deletion event impact accuracy (2026-11-27)
