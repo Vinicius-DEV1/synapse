@@ -176,8 +176,8 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 - [x] Dispatch Alt+Right/Left while the answer field is focused through a visible `QQuickWindow`; verify navigation, draft restoration and explanation closing. See QT-NOTES-084.
 - [ ] Verify unmodified arrows and `<`/`>` event dispatch, first/last boundaries, pending counts, focus, and finish-dialog behavior in the running desktop application. See QT-NOTES-084.
 - [x] Generate Notes multiple-choice option shortcuts from the current list (`1–9`, `A–Z`) and preserve option G when it exists. Focused QML tests cover eight-option mapping, text-focus/confirmed guards and G resolving to option seven. See QT-NOTES-085.
-- [x] Dispatch `G` and `7` through a visible `QQuickWindow` for a seven-option question; both select option seven. QML mapping checks also cover eight choices and reject unavailable indexes. See QT-NOTES-085.
-- [ ] Verify 1/4/9/10/26-option boundaries, letter-key dispatch, labels, and input isolation in the running desktop application. See QT-NOTES-085.
+- [x] Dispatch `G` and `7` through a visible `QQuickWindow` for a seven-option question; both select option seven. Dispatch `A` and `Z` for a 26-option question and verify indexes 0 and 25. QML mapping checks cover 1/4/9/10/26-option boundaries and reject unavailable indexes. See QT-NOTES-085.
+- [ ] Verify option shortcuts, visible letter labels and input isolation in the running desktop application at a matched viewport. See QT-NOTES-085.
 - [x] In Notes focus, leave Space inert before answer confirmation and advance after confirmation; retain generic quiz Space behavior outside Notes. Focused QML checks cover the answered, focused-input and navigation state gates. See QT-NOTES-086.
 - [x] Dispatch Space through a visible `QQuickWindow`: it is inert before confirmation and while the answer field is focused, advances an answered question, and opens the finish confirmation after the last question. See QT-NOTES-086.
 - [ ] Verify the completed-answer path and final state in the running desktop application and compare with React at the same viewport. See QT-NOTES-086.
