@@ -4344,4 +4344,75 @@ Editor shortcuts are disabled while an editor dialog is open.</translation>
       <translation>Link or Create Habit</translation>
     </message>
   </context>
+  <context>
+    <name>NotesLinkedItemActionDialog</name>
+    <message>
+      <source>Abrir Documento</source>
+      <translation>Open Document</translation>
+    </message>
+    <message>
+      <source>Abrir Vídeo</source>
+      <translation>Open Video</translation>
+    </message>
+    <message>
+      <source>Abrir Livro</source>
+      <translation>Open Book</translation>
+    </message>
+    <message>
+      <source>Fechar opções de abertura</source>
+      <translation>Close open options</translation>
+    </message>
+    <message>
+      <source>Como deseja abrir %1?</source>
+      <translation>How would you like to open %1?</translation>
+    </message>
+    <message>
+      <source>Como deseja abrir o arquivo %1?</source>
+      <translation>How would you like to open the file %1?</translation>
+    </message>
+    <message>
+      <source>Documento</source>
+      <translation>Document</translation>
+    </message>
+    <message>
+      <source>o vídeo</source>
+      <translation>the video</translation>
+    </message>
+    <message>
+      <source>o livro</source>
+      <translation>the book</translation>
+    </message>
+    <message>
+      <source>Visualizador Rápido</source>
+      <translation>Quick Viewer</translation>
+    </message>
+    <message>
+      <source>Abre uma prévia flutuante sobre a anotação</source>
+      <translation>Opens a floating preview over the note</translation>
+    </message>
+    <message>
+      <source>Leitor Completo (Nesta Guia)</source>
+      <translation>Full Reader (This Tab)</translation>
+    </message>
+    <message>
+      <source>Abrir nesta Guia</source>
+      <translation>Open in This Tab</translation>
+    </message>
+    <message>
+      <source>Substitui a visualização atual</source>
+      <translation>Replaces the current view</translation>
+    </message>
+    <message>
+      <source>Leitor Completo (Nova Guia)</source>
+      <translation>Full Reader (New Tab)</translation>
+    </message>
+    <message>
+      <source>Abrir em Nova Guia</source>
+      <translation>Open in New Tab</translation>
+    </message>
+    <message>
+      <source>Mantém esta anotação aberta</source>
+      <translation>Keeps this note open</translation>
+    </message>
+  </context>
 </TS>

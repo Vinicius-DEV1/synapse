@@ -4344,4 +4344,75 @@ Editor shortcuts are disabled while an editor dialog is open.</translation>
       <translation>Vincular ou Criar Hábito</translation>
     </message>
   </context>
+  <context>
+    <name>NotesLinkedItemActionDialog</name>
+    <message>
+      <source>Abrir Documento</source>
+      <translation>Abrir Documento</translation>
+    </message>
+    <message>
+      <source>Abrir Vídeo</source>
+      <translation>Abrir Vídeo</translation>
+    </message>
+    <message>
+      <source>Abrir Livro</source>
+      <translation>Abrir Livro</translation>
+    </message>
+    <message>
+      <source>Fechar opções de abertura</source>
+      <translation>Fechar opções de abertura</translation>
+    </message>
+    <message>
+      <source>Como deseja abrir %1?</source>
+      <translation>Como deseja abrir %1?</translation>
+    </message>
+    <message>
+      <source>Como deseja abrir o arquivo %1?</source>
+      <translation>Como deseja abrir o arquivo %1?</translation>
+    </message>
+    <message>
+      <source>Documento</source>
+      <translation>Documento</translation>
+    </message>
+    <message>
+      <source>o vídeo</source>
+      <translation>o vídeo</translation>
+    </message>
+    <message>
+      <source>o livro</source>
+      <translation>o livro</translation>
+    </message>
+    <message>
+      <source>Visualizador Rápido</source>
+      <translation>Visualizador Rápido</translation>
+    </message>
+    <message>
+      <source>Abre uma prévia flutuante sobre a anotação</source>
+      <translation>Abre uma prévia flutuante sobre a anotação</translation>
+    </message>
+    <message>
+      <source>Leitor Completo (Nesta Guia)</source>
+      <translation>Leitor Completo (Nesta Guia)</translation>
+    </message>
+    <message>
+      <source>Abrir nesta Guia</source>
+      <translation>Abrir nesta Guia</translation>
+    </message>
+    <message>
+      <source>Substitui a visualização atual</source>
+      <translation>Substitui a visualização atual</translation>
+    </message>
+    <message>
+      <source>Leitor Completo (Nova Guia)</source>
+      <translation>Leitor Completo (Nova Guia)</translation>
+    </message>
+    <message>
+      <source>Abrir em Nova Guia</source>
+      <translation>Abrir em Nova Guia</translation>
+    </message>
+    <message>
+      <source>Mantém esta anotação aberta</source>
+      <translation>Mantém esta anotação aberta</translation>
+    </message>
+  </context>
 </TS>

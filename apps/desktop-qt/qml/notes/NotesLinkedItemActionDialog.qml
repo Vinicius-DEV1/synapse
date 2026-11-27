@@ -48,24 +48,16 @@ Dialog {
 
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: 18
-            anchors.rightMargin: 10
+            anchors.leftMargin: 16
+            anchors.rightMargin: 16
             spacing: 10
 
-            Rectangle {
-                Layout.preferredWidth: 30
-                Layout.preferredHeight: 30
-                radius: 8
-                color: actionDialog.itemKind === "file" ? "#1a3b82f6"
-                      : actionDialog.itemKind === "video" ? "#1a8b5cf6" : "#1a3b82f6"
-                AppIcon {
-                    anchors.centerIn: parent
-                    name: actionDialog.itemKind === "file" ? "file-text"
-                          : actionDialog.itemKind === "video" ? "film" : "book-open"
-                    color: actionDialog.itemKind === "video" ? "#c084fc" : "#60a5fa"
-                    width: 16
-                    height: 16
-                }
+            AppIcon {
+                name: actionDialog.itemKind === "file" ? "file-text"
+                      : actionDialog.itemKind === "video" ? "film" : "book-open"
+                color: actionDialog.itemKind === "video" ? "#c084fc" : "#60a5fa"
+                Layout.preferredWidth: 18
+                Layout.preferredHeight: 18
             }
 
             Label {
@@ -73,14 +65,21 @@ Dialog {
                 text: actionDialog.itemKind === "file" ? qsTr("Abrir Documento")
                       : actionDialog.itemKind === "video" ? qsTr("Abrir Vídeo") : qsTr("Abrir Livro")
                 color: "#fffffe"
-                font.pixelSize: 15
+                font.pixelSize: 16
                 font.weight: Font.Medium
             }
 
             ToolButton {
+                id: closeButton
+                Layout.preferredWidth: 24
+                Layout.preferredHeight: 24
                 text: "×"
                 Accessible.name: qsTr("Fechar opções de abertura")
                 onClicked: actionDialog.close()
+                background: Rectangle {
+                    radius: 6
+                    color: closeButton.hovered ? "#1affffff" : "transparent"
+                }
             }
         }
 
@@ -93,19 +92,21 @@ Dialog {
     }
 
     contentItem: Item {
-        implicitHeight: actionOptions.implicitHeight + 36
+        implicitHeight: actionOptions.implicitHeight + 40
         ColumnLayout {
             id: actionOptions
             anchors.fill: parent
-            anchors.margins: 18
-            spacing: 12
+            anchors.margins: 20
+            spacing: 16
 
             Label {
+                objectName: "notesLinkedItemActionPrompt"
                 Layout.fillWidth: true
                 wrapMode: Text.Wrap
-                text: qsTr("Como deseja abrir %1?").arg(actionDialog.itemTitle ||
-                     (actionDialog.itemKind === "file" ? qsTr("este documento")
-                      : actionDialog.itemKind === "video" ? qsTr("este vídeo") : qsTr("este livro")))
+                text: actionDialog.itemKind === "file"
+                    ? qsTr("Como deseja abrir o arquivo %1?").arg(actionDialog.itemTitle || qsTr("Documento"))
+                    : qsTr("Como deseja abrir %1?").arg(actionDialog.itemTitle ||
+                         (actionDialog.itemKind === "video" ? qsTr("o vídeo") : qsTr("o livro")))
                 color: "#a7a9be"
                 font.pixelSize: 12
             }
