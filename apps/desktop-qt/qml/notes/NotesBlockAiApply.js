@@ -27,6 +27,8 @@ function createHandler(editor, index) {
         : block.blockType === "blockquote" ? "IA • Callout"
         : block.blockType === "blockquoteToggle" ? "IA • Toggle Callout" : "IA • Toggle"
     applyHandler.blockSubtitle = String((block.attrs && (block.attrs["data-title"] || block.attrs.title)) || "")
+    applyHandler.blockLanguage = String((block.attrs && block.attrs.language) || "auto")
+    if (block.blockType === "codeBlock") applyHandler.blockSubtitle = applyHandler.blockLanguage
     applyHandler.sourceContent = String(block.attrs && block.attrs.code !== undefined
         ? block.attrs.code : block.innerHtml || block.html || "")
     applyHandler.anchorX = anchorPoint ? anchorPoint.x : -1

@@ -5,6 +5,7 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import "../ui"
 import "NotesBlockAiSession.js" as BlockAiSession
+import "NotesBlockAiPrompt.js" as BlockAiPrompt
 
 Item {
     id: aiModalRoot
@@ -131,15 +132,14 @@ Item {
         previewDiffHtml = ""
         var generation = ++requestGeneration
 
-        var baseText = selectedText.trim().length > 0
-            ? selectedText
-            : noteContextHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().substring(0, 3500)
-
         var blockScoped = typeof blockApplyHandler === "function"
+        var baseText = blockScoped
+            ? BlockAiPrompt.contextFor(blockApplyHandler)
+            : selectedText.trim().length > 0
+                ? selectedText
+                : noteContextHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().substring(0, 3500)
         var sysPrompt = blockScoped
-            ? (blockApplyHandler.blockType === "codeBlock"
-                ? "Você é um assistente de edição de código do Synapse. Trabalhe somente no código atual. Responda em português quando explicar; quando houver proposta de código, devolva código limpo ou um bloco de código cercado, sem criar outro bloco externo."
-                : "Você é um assistente de edição do Synapse. Trabalhe somente no conteúdo deste bloco e não recrie a casca externa. Devolva a proposta em Markdown simples, sem explicações fora do conteúdo. Para mudar o título de um toggle, comece com 'Título: Novo título'.")
+            ? BlockAiPrompt.systemInstruction(blockApplyHandler.blockType, blockApplyHandler.blockLanguage)
             : "Você é um assistente de edição de notas no Synapse. Responda de forma clara e direta em português. Quando reescrever ou editar um trecho existente, devolva o novo texto limpo em HTML simples (<p>, <ul>, <li>, <strong>, <em>)."
         var userPrompt = (chatHistory.length === 0 && baseText.length > 0)
             ? ("Instrução: " + instruction + "\n\nConteúdo de referência:\n" + baseText)
