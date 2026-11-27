@@ -12,6 +12,7 @@ int runNativeNotesPageSwitchTest(int argc, char **argv);
 int runNativeNotesPageSwitchCoreTest(int argc, char **argv);
 int runNativeNotesTableFilterPersistenceTest(int argc, char **argv);
 int runNativeNotesDroppedFileTest(int argc, char **argv);
+int runNativeNotesCursorSplitTest(int argc, char **argv);
 int runNativeNotesPageHistoryTest(int argc, char **argv);
 int runNativeNotesPageHistoryKeyboardTest(int argc, char **argv);
 int runNativeNotesPageHeaderActionTest(int argc, char **argv);
@@ -73,6 +74,9 @@ int main(int argc, char **argv) {
     }
     if (argc > 1 && std::strcmp(argv[1], "--suite=notes-dropped-files") == 0) {
         return runNativeNotesDroppedFileTest(argc - 1, argv + 1);
+    }
+    if (argc > 1 && std::strcmp(argv[1], "--suite=notes-cursor-split") == 0) {
+        return runNativeNotesCursorSplitTest(argc - 1, argv + 1);
     }
     if (argc > 1 && std::strcmp(argv[1], "--suite=notes-history") == 0) {
         int result = runNativeNotesPageHistoryTest(argc - 1, argv + 1);

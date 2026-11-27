@@ -111,9 +111,19 @@ fn complete_split(mut before: String, after: String, open_tags: &[OpenTag]) -> (
         before.push_str(name);
         before.push('>');
     }
+    let has_open_label = open_tags.iter().any(|(name, _)| name == "label");
     let mut reopened = String::new();
-    for (_, opening_tag) in open_tags {
+    for (name, opening_tag) in open_tags {
         reopened.push_str(opening_tag);
+        if name == "li" && !has_open_label && opening_tag.contains("data-type=\"taskItem\"") {
+            if opening_tag.contains("data-checked=\"true\"") {
+                reopened.push_str(
+                    "<label><input type=\"checkbox\" checked=\"checked\"/><span></span></label>",
+                );
+            } else {
+                reopened.push_str("<label><input type=\"checkbox\"/><span></span></label>");
+            }
+        }
     }
     reopened.push_str(&after);
     (before, reopened)

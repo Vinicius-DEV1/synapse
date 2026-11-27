@@ -190,6 +190,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
         tests/notes/native_notes_page_switch_core_test.cpp
         tests/notes/native_notes_table_filter_persistence_test.cpp
         tests/notes/native_notes_dropped_file_test.cpp
+        tests/notes/native_notes_cursor_split_test.cpp
         tests/notes/native_notes_page_history_test.cpp
         tests/notes/native_notes_page_history_keyboard_test.cpp
         tests/notes/native_notes_page_header_action_test.cpp
