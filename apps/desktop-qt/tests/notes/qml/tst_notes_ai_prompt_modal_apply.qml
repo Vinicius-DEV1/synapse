@@ -14,6 +14,7 @@ TestCase {
 
     property var modal: null
     property string appliedValue: ""
+    property string copiedText: ""
     property bool appliedAsCanonicalHtml: false
     property string insertedText: ""
     property int closeCount: 0
@@ -32,6 +33,7 @@ TestCase {
 
     function init() {
         appliedValue = ""
+        copiedText = ""
         appliedAsCanonicalHtml = false
         insertedText = ""
         closeCount = 0
@@ -150,10 +152,12 @@ TestCase {
             { role: "assistant", content: "## Summary\n\n- First point" }
         ]
         modal.aiReply = "## Summary\n\n- First point"
+        var conversation = findChild(modal, "notesAiConversation")
+        verify(conversation !== null)
         var repeater = findChild(modal, "notesAiMessagesRepeater")
         verify(repeater !== null)
         compare(repeater.count, 2)
-        compare(modal.displayMessage(modal.chatHistory[0], 0), "Make a summary")
+        compare(conversation.displayMessage(modal.chatHistory[0], 0), "Make a summary")
         var userRow = repeater.itemAt(0)
         var assistantRow = repeater.itemAt(1)
         verify(userRow !== null)
@@ -178,5 +182,74 @@ TestCase {
         verify(scroll.contentHeight > scroll.height)
         verify(scroll.contentY > 0)
         verify(scroll.contentY >= scroll.contentHeight - scroll.height - 1)
+    }
+
+    function test_everyAssistantMessageHasItsOwnProposalActions() {
+        var sourceBlock = {
+            id: "code-1",
+            blockType: "codeBlock",
+            attrs: { code: "const oldValue = 1;", language: "js" },
+            html: "",
+            innerHtml: "const oldValue = 1;"
+        }
+        var applyHandler = function(value, canonical) {
+            testCase.appliedValue = value
+            testCase.appliedAsCanonicalHtml = canonical
+            return true
+        }
+        applyHandler.sourceBlockState = JSON.stringify(sourceBlock)
+        applyHandler.blockType = "codeBlock"
+        applyHandler.blockLanguage = "js"
+        applyHandler.insertContent = function(value) {
+            testCase.insertedText = value
+            return true
+        }
+        modal.controller = {
+            copyToClipboard: function(value) { testCase.copiedText = value },
+            computeNoteWordDiffHtml: function(before, after) { return "<del>" + before + "</del><ins>" + after + "</ins>" }
+        }
+        modal.openModal("", "const oldValue = 1;", applyHandler)
+        modal.chatHistory = [
+            { role: "user", content: "First request" },
+            { role: "assistant", content: "```js\nconst newValue = 2;\n```" },
+            { role: "user", content: "Second request" },
+            { role: "assistant", content: "```js\nconst finalValue = 3;\n```" }
+        ]
+
+        var repeater = findChild(modal, "notesAiMessagesRepeater")
+        compare(repeater.count, 4)
+        for (var i = 1; i < repeater.count; i += 2) {
+            var row = repeater.itemAt(i)
+            verify(findChild(row, "notesAiMessageActions") !== null)
+            verify(findChild(row, "notesAiApplyMessage") !== null)
+            verify(findChild(row, "notesAiDiffMessage") !== null)
+            verify(findChild(row, "notesAiInsertMessage") !== null)
+            verify(findChild(row, "notesAiCopyMessage") !== null)
+        }
+
+        var firstAssistant = repeater.itemAt(1)
+        var olderCopy = findChild(firstAssistant, "notesAiCopyMessage")
+        olderCopy.clicked()
+        compare(copiedText, "const newValue = 2;")
+        compare(modal.copiedMessageIndex, 1)
+
+        var olderDiff = findChild(firstAssistant, "notesAiDiffMessage")
+        olderDiff.clicked()
+        compare(modal.diffMessageIndex, 1)
+        verify(findChild(firstAssistant, "notesAiMessageText").text.indexOf("<ins>") >= 0)
+
+        findChild(firstAssistant, "notesAiApplyMessage").clicked()
+        compare(appliedValue, "```js\nconst newValue = 2;\n```")
+        verify(!appliedAsCanonicalHtml)
+        verify(!modal.isOpen)
+
+        modal.openModal("", "const oldValue = 1;", applyHandler)
+        modal.chatHistory = [
+            { role: "assistant", content: "```js\nconst insertedValue = 4;\n```" }
+        ]
+        var latestRow = findChild(modal, "notesAiMessagesRepeater").itemAt(0)
+        findChild(latestRow, "notesAiInsertMessage").clicked()
+        compare(insertedText, "const insertedValue = 4;")
+        verify(!modal.isOpen)
     }
 }
