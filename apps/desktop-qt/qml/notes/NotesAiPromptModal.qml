@@ -35,6 +35,13 @@ Item {
     property string previewDiffHtml: ""
     property string errorText: ""
 
+    Component.onDestruction: {
+        requestGeneration++
+        isGenerating = false
+        isOpen = false
+        cancelActiveRequest()
+    }
+
     signal applyHtmlRequested(string html)
     signal insertTextRequested(string text)
     signal closed()
