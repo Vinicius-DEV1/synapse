@@ -35,6 +35,7 @@ ColumnLayout {
             }
             TextField {
                 id: dateField
+                objectName: "notesCalendarEventDateField"
                 Layout.fillWidth: true
                 Layout.preferredHeight: 34
                 placeholderText: "YYYY-MM-DD"
@@ -54,6 +55,7 @@ ColumnLayout {
             }
             TextField {
                 id: timeField
+                objectName: "notesCalendarEventTimeField"
                 Layout.fillWidth: true
                 Layout.preferredHeight: 34
                 placeholderText: "HH:mm"

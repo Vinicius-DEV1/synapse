@@ -4299,4 +4299,49 @@ Editor shortcuts are disabled while an editor dialog is open.</translation>
       <translation>Fazer Upload (%1)</translation>
     </message>
   </context>
+  <context>
+    <name>NotesCalendarEventTitleField</name>
+    <message>
+      <source>Título do Evento *</source>
+      <translation>Título do Evento *</translation>
+    </message>
+    <message>
+      <source>Ex: Mentoria 01 - Arquitetura</source>
+      <translation>Ex: Mentoria 01 - Arquitetura</translation>
+    </message>
+  </context>
+  <context>
+    <name>NotesCalendarEventTypeField</name>
+    <message>
+      <source>Tipo de Evento</source>
+      <translation>Tipo de Evento</translation>
+    </message>
+  </context>
+  <context>
+    <name>NotesSetupModalHeader</name>
+    <message>
+      <source>Criar Widget de Questões</source>
+      <translation>Criar Widget de Questões</translation>
+    </message>
+    <message>
+      <source>Configurar Timer de Foco</source>
+      <translation>Configurar Timer de Foco</translation>
+    </message>
+    <message>
+      <source>Novo Alarme</source>
+      <translation>Novo Alarme</translation>
+    </message>
+    <message>
+      <source>Criar Evento na Agenda</source>
+      <translation>Criar Evento na Agenda</translation>
+    </message>
+    <message>
+      <source>Vínculo inline com avisos automáticos</source>
+      <translation>Vínculo inline com avisos automáticos</translation>
+    </message>
+    <message>
+      <source>Vincular ou Criar Hábito</source>
+      <translation>Vincular ou Criar Hábito</translation>
+    </message>
+  </context>
 </TS>

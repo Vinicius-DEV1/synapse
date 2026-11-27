@@ -52,6 +52,7 @@ ColumnLayout {
         selectedReminders = [1440, 120, 15, 0]
         errorMessage = ""
         isSubmitting = false
+        Qt.callLater(function() { titleField.forceActiveFocus() })
     }
 
     function startDateISO() {
@@ -112,6 +113,13 @@ ColumnLayout {
         closeRequested()
     }
 
+    Shortcut {
+        sequence: "Return"
+        context: Qt.WindowShortcut
+        enabled: titleField.text.trim().length > 0 && eventForm.dateTimeValid && !eventForm.isSubmitting
+        onActivated: eventForm.createEvent()
+    }
+
     Rectangle {
         visible: eventForm.pageTitle.length > 0
         Layout.fillWidth: true
@@ -135,14 +143,8 @@ ColumnLayout {
         }
     }
 
-    TextField {
+    NotesCalendarEventTitleField {
         id: titleField
-        Layout.fillWidth: true
-        Layout.preferredHeight: 36
-        placeholderText: qsTr("Título do evento")
-        color: "#fffffe"
-        font.pixelSize: 12
-        background: Rectangle { radius: 8; color: "#0f0e17"; border.color: "#2e2e38" }
     }
 
     NotesCalendarDateTimeFields {
@@ -150,27 +152,10 @@ ColumnLayout {
         Layout.fillWidth: true
     }
 
-    ComboBox {
-        id: eventTypeSelector
-        Layout.fillWidth: true
-        Layout.preferredHeight: 36
-        model: eventForm.eventTypes
-        textRole: "label"
-        currentIndex: {
-            for (var typeIndex = 0; typeIndex < eventForm.eventTypes.length; ++typeIndex) {
-                if (eventForm.eventTypes[typeIndex].value === eventForm.eventType) return typeIndex
-            }
-            return 0
-        }
-        onActivated: function(index) { eventForm.eventType = eventForm.eventTypes[index].value }
-        background: Rectangle { radius: 8; color: "#0f0e17"; border.color: "#2e2e38" }
-        contentItem: Text {
-            leftPadding: 10
-            text: eventTypeSelector.displayText
-            color: "#fffffe"
-            font.pixelSize: 12
-            verticalAlignment: Text.AlignVCenter
-        }
+    NotesCalendarEventTypeField {
+        eventTypes: eventForm.eventTypes
+        selectedType: eventForm.eventType
+        onTypeSelected: function(value) { eventForm.eventType = value }
     }
 
     ColumnLayout {

@@ -69,15 +69,16 @@ Item {
     Rectangle {
         objectName: "notesSetupModalCard"
         visible: setupRoot.activeMode !== "alarme"
-        width: setupRoot.activeMode === "alarme" ? Math.min(parent.width - 32, 672) : 450
+        width: setupRoot.activeMode === "alarme" ? Math.min(parent.width - 32, 672)
+            : setupRoot.activeMode === "evento" ? Math.max(0, Math.min(448, parent.width - 32)) : 450
         height: setupRoot.activeMode === "alarme"
             ? Math.min(parent.height - 32, cardCol.implicitHeight + 48)
             : Math.min(parent.height - 48, cardCol.implicitHeight + 40)
         anchors.centerIn: parent
         radius: 16
         color: setupRoot.activeMode === "alarme" ? "#0f0e17" : "#161522"
-        border.color: setupRoot.activeMode === "alarme" || setupRoot.activeMode === "question"
-            ? "#0dffffff" : "#338b5cf6"
+        border.color: setupRoot.activeMode === "alarme" || setupRoot.activeMode === "question" || setupRoot.activeMode === "evento"
+            ? "#1affffff" : "#338b5cf6"
         border.width: 1
 
         MouseArea { anchors.fill: parent }
@@ -86,55 +87,13 @@ Item {
             id: cardCol
             anchors.fill: parent
             anchors.margins: setupRoot.activeMode === "alarme" ? 24
-                : setupRoot.activeMode === "question" ? 16 : 20
+                : setupRoot.activeMode === "question" || setupRoot.activeMode === "evento" ? 16 : 20
             spacing: setupRoot.activeMode === "alarme" ? 18
                 : setupRoot.activeMode === "question" ? 16 : 12
 
-            RowLayout {
-                Layout.fillWidth: true
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 12
-                    AppIcon {
-                        objectName: "notesSetupModalContextIcon"
-                        visible: setupRoot.activeMode === "alarme" || setupRoot.activeMode === "question"
-                        name: setupRoot.activeMode === "question" ? "help" : "clock"
-                        color: "#a78bfa"
-                        Layout.preferredWidth: setupRoot.activeMode === "question" ? 18 : 32
-                        Layout.preferredHeight: setupRoot.activeMode === "question" ? 18 : 32
-                    }
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 2
-                        Text {
-                            objectName: "notesSetupModalTitle"
-                            text: setupRoot.activeMode === "question" ? qsTr("Criar Widget de Questões")
-                                : setupRoot.activeMode === "foco" ? qsTr("Configurar Timer de Foco")
-                                : setupRoot.activeMode === "alarme" ? qsTr("Novo Alarme")
-                                : setupRoot.activeMode === "evento" ? qsTr("Criar Evento na Agenda")
-                                : qsTr("Vincular ou Criar Hábito")
-                            color: "#fffffe"
-                            font.pixelSize: setupRoot.activeMode === "alarme" ? 24
-                                : setupRoot.activeMode === "question" ? 14 : 15
-                            font.bold: true
-                            Layout.fillWidth: true
-                        }
-                        Text {
-                            visible: setupRoot.activeMode === "evento"
-                            text: qsTr("Vínculo inline com avisos automáticos")
-                            color: "#a7a9be"
-                            font.pixelSize: 10
-                        }
-                    }
-                }
-                ToolButton {
-                    id: setupCloseButton
-                    Layout.preferredWidth: setupRoot.activeMode === "alarme" ? 48 : 26
-                    Layout.preferredHeight: setupRoot.activeMode === "alarme" ? 48 : 26
-                    onClicked: setupRoot.close()
-                    background: Rectangle { radius: 6; color: setupCloseButton.hovered ? "#1affffff" : "transparent" }
-                    contentItem: AppIcon { anchors.centerIn: parent; name: "close"; color: "#94a1b2"; width: 12; height: 12 }
-                }
+            NotesSetupModalHeader {
+                mode: setupRoot.activeMode
+                onCloseRequested: setupRoot.close()
             }
 
             NotesSetupWidgetPickerPanel {
