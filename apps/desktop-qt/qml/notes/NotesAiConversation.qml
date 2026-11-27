@@ -99,6 +99,7 @@ Item {
                         readonly property bool userMessage: String(modelData.role || "") === "user"
                         readonly property var proposal: userMessage ? null : conversationRoot.proposalForMessage(modelData)
                         readonly property string proposalDiff: userMessage ? "" : conversationRoot.diffForMessage(modelData)
+                        readonly property bool showingProposalDiff: conversationRoot.diffMessageIndex === index && proposalDiff.length > 0
                         width: messageColumn.width
                         height: messageBubble.implicitHeight + (messageActions.visible ? messageActions.implicitHeight + 4 : 0)
 
@@ -106,98 +107,139 @@ Item {
                             id: messageBubble
                             x: messageRow.userMessage ? messageRow.width - width : 0
                             width: Math.min(messageRow.width * 0.88, messageText.implicitWidth + 24)
-                            height: messageText.implicitHeight + 16
+                            height: 16 + (messageRow.showingProposalDiff
+                                ? 24 + Math.min(diffMessageText.implicitHeight, 220)
+                                : messageText.implicitHeight)
                             implicitHeight: height
                             radius: 10
                             color: messageRow.userMessage ? "#6d28d9" : "#1a1b22"
                             border.color: messageRow.userMessage ? "transparent" : "#24ffffff"
 
-                            Text {
-                                id: messageText
-                                objectName: "notesAiMessageText"
-                                anchors.fill: parent
-                                anchors.margins: 8
-                                text: messageRow.userMessage
-                                    ? conversationRoot.displayMessage(messageRow.modelData, messageRow.index)
-                                    : conversationRoot.diffMessageIndex === messageRow.index && messageRow.proposalDiff.length > 0
-                                        ? messageRow.proposalDiff
+                            Column {
+                                id: messageContent
+                                x: 12
+                                y: 8
+                                width: parent.width - 24
+                                spacing: 6
+
+                                Row {
+                                    objectName: "notesAiDiffHeader"
+                                    visible: messageRow.showingProposalDiff
+                                    width: parent.width
+                                    height: messageRow.showingProposalDiff ? 18 : 0
+                                    spacing: 5
+
+                                    Text {
+                                        id: diffHeaderLabel
+                                        text: qsTr("Comparação de Modificações")
+                                        color: "#c4b5fd"
+                                        font.pixelSize: 11
+                                        font.weight: Font.Medium
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+                                    Item {
+                                        width: Math.max(0, parent.width - diffHeaderLabel.implicitWidth -
+                                            (diffCountBadge.visible ? diffCountBadge.width + 5 : 0) - 5)
+                                        height: 1
+                                    }
+                                    Rectangle {
+                                        id: diffCountBadge
+                                        objectName: "notesAiDiffCount"
+                                        visible: messageRow.proposal && messageRow.proposal.isSearchReplace
+                                        width: messageRow.proposal && messageRow.proposal.isSearchReplace
+                                            ? diffCountText.implicitWidth + 12 : 0
+                                        height: 17
+                                        radius: 4
+                                        color: "#1a10b981"
+                                        border.color: "#3334d399"
+                                        Text {
+                                            id: diffCountText
+                                            objectName: "notesAiDiffCountText"
+                                            anchors.centerIn: parent
+                                            text: qsTr("%1 cirúrgica(s)").arg(messageRow.proposal ? messageRow.proposal.searchReplaceCount : 0)
+                                            color: "#34d399"
+                                            font.pixelSize: 10
+                                        }
+                                    }
+                                }
+
+                                TextEdit {
+                                    id: messageText
+                                    objectName: "notesAiMessageText"
+                                    visible: !messageRow.showingProposalDiff
+                                    width: parent.width
+                                    readOnly: true
+                                    text: messageRow.userMessage
+                                        ? conversationRoot.displayMessage(messageRow.modelData, messageRow.index)
                                         : BlockAiOperations.richContentHtml(String(messageRow.modelData.content || ""))
-                                textFormat: messageRow.userMessage ? Text.PlainText : Text.RichText
-                                color: messageRow.userMessage ? "#ffffff" : "#e4e4e7"
-                                font.pixelSize: 12
-                                wrapMode: Text.WordWrap
+                                    textFormat: messageRow.userMessage ? Text.PlainText : Text.RichText
+                                    color: messageRow.userMessage ? "#ffffff" : "#e4e4e7"
+                                    font.pixelSize: 12
+                                    wrapMode: TextEdit.WordWrap
+                                    selectByMouse: true
+                                }
+
+                                Rectangle {
+                                    id: diffViewerFrame
+                                    visible: messageRow.showingProposalDiff
+                                    width: parent.width
+                                    height: messageRow.showingProposalDiff
+                                        ? Math.min(diffMessageText.implicitHeight + 20, 220) : 0
+                                    implicitHeight: height
+                                    radius: 8
+                                    color: "#66000000"
+                                    border.color: "#24ffffff"
+
+                                    Flickable {
+                                        objectName: "notesAiDiffViewer"
+                                        anchors.fill: parent
+                                        contentWidth: width
+                                        contentHeight: diffMessageText.implicitHeight + 20
+                                        clip: true
+                                        boundsBehavior: Flickable.StopAtBounds
+
+                                        TextEdit {
+                                            id: diffMessageText
+                                            objectName: "notesAiDiffMessageText"
+                                            x: 10
+                                            y: 10
+                                            width: parent.width - 20
+                                            text: messageRow.proposalDiff
+                                            textFormat: Text.RichText
+                                            readOnly: true
+                                            color: "#e4e4e7"
+                                            font.family: "monospace"
+                                            font.pixelSize: 11
+                                            wrapMode: TextEdit.WordWrap
+                                            selectByMouse: true
+                                        }
+                                    }
+                                }
                             }
                         }
 
-                        Flow {
+                        NotesAiMessageActions {
                             id: messageActions
                             objectName: "notesAiMessageActions"
                             x: 0
                             y: messageBubble.height + 4
                             width: messageRow.width
                             visible: !messageRow.userMessage && conversationRoot.blockScoped
-                            spacing: 4
-
-                            Button {
-                                objectName: "notesAiApplyMessage"
-                                visible: Boolean(messageRow.proposal)
-                                enabled: !conversationRoot.isGenerating
-                                padding: 6
-                                onClicked: conversationRoot.applyRequested(messageRow.modelData, Boolean(messageRow.proposal.valid))
-                                background: Rectangle {
-                                    radius: 5
-                                    color: messageRow.proposal && messageRow.proposal.isSearchReplace ? "#3334d399" : "#337c3aed"
-                                    border.color: messageRow.proposal && messageRow.proposal.isSearchReplace ? "#554ade80" : "#557c3aed"
-                                }
-                                contentItem: Text {
-                                    text: messageRow.proposal && messageRow.proposal.isSearchReplace
-                                        ? qsTr("Aplicar cirurgicamente (%1)").arg(messageRow.proposal.searchReplaceCount)
-                                        : conversationRoot.blockType === "codeBlock"
-                                            ? qsTr("Substituir Código") : qsTr("Substituir no Bloco")
-                                    color: messageRow.proposal && messageRow.proposal.isSearchReplace ? "#6ee7b7" : "#c4b5fd"
-                                    font.pixelSize: 10
-                                    font.weight: Font.Medium
-                                }
+                            message: messageRow.modelData
+                            messageIndex: messageRow.index
+                            proposal: messageRow.proposal
+                            proposalDiff: messageRow.proposalDiff
+                            blockType: conversationRoot.blockType
+                            isGenerating: conversationRoot.isGenerating
+                            diffMessageIndex: conversationRoot.diffMessageIndex
+                            copiedMessageIndex: conversationRoot.copiedMessageIndex
+                            onApplyRequested: function(message, isValid) { conversationRoot.applyRequested(message, isValid) }
+                            onDiffToggled: function(index) { conversationRoot.diffToggled(index) }
+                            onInsertRequested: function(message, cleanText, isSearchReplace) {
+                                conversationRoot.insertRequested(message, cleanText, isSearchReplace)
                             }
-                            Button {
-                                objectName: "notesAiDiffMessage"
-                                visible: messageRow.proposal && messageRow.proposal.diffAvailable && messageRow.proposalDiff.length > 0
-                                padding: 6
-                                onClicked: conversationRoot.diffToggled(conversationRoot.diffMessageIndex === messageRow.index ? -1 : messageRow.index)
-                                background: Rectangle {
-                                    radius: 5
-                                    color: conversationRoot.diffMessageIndex === messageRow.index ? "#33f59e0b" : "#1affffff"
-                                    border.color: "#24ffffff"
-                                }
-                                contentItem: Text {
-                                    text: conversationRoot.diffMessageIndex === messageRow.index ? qsTr("Ver resposta") : qsTr("Ver Diff")
-                                    color: conversationRoot.diffMessageIndex === messageRow.index ? "#fcd34d" : "#a7a9be"
-                                    font.pixelSize: 10
-                                }
-                            }
-                            Button {
-                                objectName: "notesAiInsertMessage"
-                                visible: messageRow.proposal && !messageRow.proposal.isSearchReplace
-                                enabled: !conversationRoot.isGenerating
-                                padding: 6
-                                onClicked: conversationRoot.insertRequested(
-                                    messageRow.modelData, messageRow.proposal.cleanText, messageRow.proposal.isSearchReplace)
-                                background: Rectangle { radius: 5; color: "#1affffff"; border.color: "#24ffffff" }
-                                contentItem: Text { text: qsTr("Inserir"); color: "#cbd5e1"; font.pixelSize: 10 }
-                            }
-                            Button {
-                                objectName: "notesAiCopyMessage"
-                                visible: Boolean(messageRow.proposal)
-                                padding: 6
-                                onClicked: conversationRoot.copyRequested(
-                                    messageRow.modelData, messageRow.index,
-                                    messageRow.proposal.cleanText || String(messageRow.modelData.content || ""))
-                                background: Rectangle { radius: 5; color: "transparent" }
-                                contentItem: Text {
-                                    text: conversationRoot.copiedMessageIndex === messageRow.index ? qsTr("Copiado") : qsTr("Copiar")
-                                    color: conversationRoot.copiedMessageIndex === messageRow.index ? "#34d399" : "#a1a1aa"
-                                    font.pixelSize: 10
-                                }
+                            onCopyRequested: function(message, index, cleanText) {
+                                conversationRoot.copyRequested(message, index, cleanText)
                             }
                         }
                     }

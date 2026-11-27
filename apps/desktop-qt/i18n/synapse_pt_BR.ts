@@ -4497,12 +4497,20 @@ Editor shortcuts are disabled while an editor dialog is open.</translation>
       <translation>Substituir no Bloco</translation>
     </message>
     <message>
-      <source>Ver resposta</source>
-      <translation>Ver resposta</translation>
+      <source>Ver Texto</source>
+      <translation>Ver Texto</translation>
     </message>
     <message>
       <source>Ver Diff</source>
       <translation>Ver Diff</translation>
+    </message>
+    <message>
+      <source>Comparação de Modificações</source>
+      <translation>Comparação de Modificações</translation>
+    </message>
+    <message>
+      <source>%1 cirúrgica(s)</source>
+      <translation>%1 cirúrgica(s)</translation>
     </message>
     <message>
       <source>Inserir</source>
@@ -4513,8 +4521,8 @@ Editor shortcuts are disabled while an editor dialog is open.</translation>
       <translation>Copiar</translation>
     </message>
     <message>
-      <source>Copiado</source>
-      <translation>Copiado</translation>
+      <source>Copiado!</source>
+      <translation>Copiado!</translation>
     </message>
     <message>
       <source>IA pensando…</source>
