@@ -142,4 +142,26 @@ TestCase {
         compare(modal.chatHistory.length, 0)
         compare(BlockAiSession.load(sessionId).length, 0)
     }
+
+    function test_conversationUsesDistinctUserAndAssistantBubbles() {
+        modal.openModal("", "", null)
+        modal.chatHistory = [
+            { role: "user", content: "Contexto:\n\"Current note\"\n\nInstrução:\nMake a summary" },
+            { role: "assistant", content: "## Summary\n\n- First point" }
+        ]
+        modal.aiReply = "## Summary\n\n- First point"
+        var repeater = findChild(modal, "notesAiMessagesRepeater")
+        verify(repeater !== null)
+        compare(repeater.count, 2)
+        compare(modal.displayMessage(modal.chatHistory[0], 0), "Make a summary")
+        var userRow = repeater.itemAt(0)
+        var assistantRow = repeater.itemAt(1)
+        verify(userRow !== null)
+        verify(assistantRow !== null)
+        var userText = findChild(userRow, "notesAiMessageText")
+        var assistantText = findChild(assistantRow, "notesAiMessageText")
+        compare(userText.textFormat, Text.PlainText)
+        compare(assistantText.textFormat, Text.RichText)
+        verify(assistantText.text.indexOf("<ul>") >= 0)
+    }
 }
