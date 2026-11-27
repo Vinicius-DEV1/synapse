@@ -164,4 +164,20 @@ TestCase {
         compare(assistantText.textFormat, Text.RichText)
         verify(assistantText.text.indexOf("<ul>") >= 0)
     }
+
+    function test_conversationScrollsToTheNewestMessages() {
+        modal.openModal("", "", null)
+        var messages = []
+        for (var i = 0; i < 18; ++i)
+            messages.push({ role: i % 2 === 0 ? "user" : "assistant", content: "Message " + i + " with enough text to wrap in this narrow assistant conversation panel." })
+        modal.chatHistory = messages
+        wait(50)
+
+        var scroll = findChild(modal, "notesAiMessageScroll")
+        verify(scroll !== null)
+        var flickable = scroll.contentItem
+        verify(flickable.contentHeight > scroll.height)
+        verify(flickable.contentY > 0)
+        verify(flickable.contentY >= flickable.contentHeight - scroll.height - 1)
+    }
 }
