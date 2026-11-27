@@ -65,3 +65,15 @@ pub fn compute_word_diff_html(old_text: &str, new_text: &str) -> String {
     }
     out.trim_end().to_string()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::compute_word_diff_html;
+
+    #[test]
+    fn computes_ordered_word_diff() {
+        let diff = compute_word_diff_html("rust is fast", "rust is very fast");
+        assert!(diff.contains("very"));
+        assert!(diff.contains("6ee7b7"));
+    }
+}

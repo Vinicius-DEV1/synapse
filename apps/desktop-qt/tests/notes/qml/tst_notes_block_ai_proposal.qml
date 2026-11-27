@@ -11,8 +11,6 @@ TestCase {
         var reply = "<<<<<<< SEARCH\nold()\n=======\nnew()\n>>>>>>>"
         var controller = CoreSearchReplaceFixture.controllerWithResults([
             CoreSearchReplaceFixture.success("new()"),
-            CoreSearchReplaceFixture.success("new()"),
-            CoreSearchReplaceFixture.missing(block.attrs.code),
             CoreSearchReplaceFixture.missing(block.attrs.code)
         ])
         var details = BlockAiProposal.details(block, reply, controller)
@@ -23,9 +21,45 @@ TestCase {
         compare(details.sourceText, "old()")
         compare(details.replacementText, "new()")
         verify(details.diffAvailable)
+        compare(controller.callCount(), 1)
 
         var stale = BlockAiProposal.details(block, "<<<<<<< SEARCH\nmissing()\n=======\nnew()\n>>>>>>>", controller)
         verify(!stale.valid)
+        compare(controller.callCount(), 2)
+    }
+
+    function test_flexibleSearchMarkersUseCoreParsedCount() {
+        var block = { id: "code-spacing", blockType: "codeBlock", attrs: { code: "old()", language: "js" }, html: "", innerHtml: "old()" }
+        var reply = "<<<<<<<  SEARCH  \nold()\n=======\nnew()\n>>>>>>>"
+        var controller = CoreSearchReplaceFixture.controllerWithResults([
+            CoreSearchReplaceFixture.success("new()")
+        ])
+        var details = BlockAiProposal.details(block, reply, controller)
+        verify(details.valid)
+        verify(details.isSearchReplace)
+        compare(details.searchReplaceCount, 1)
+        compare(details.replacementText, "new()")
+        compare(controller.callCount(), 1)
+    }
+
+    function test_richTextSearchUsesSameParagraphsForAnalysisAndApply() {
+        var block = {
+            id: "quote-paragraphs",
+            blockType: "blockquote",
+            attrs: {},
+            html: "",
+            innerHtml: "<p>First paragraph</p><p>Second paragraph</p>"
+        }
+        var reply = "<<<<<<< SEARCH\nFirst paragraph\nSecond paragraph\n=======\nUpdated paragraph\n>>>>>>>"
+        var controller = CoreSearchReplaceFixture.controllerWithResults([
+            CoreSearchReplaceFixture.success("Updated paragraph")
+        ])
+        var details = BlockAiProposal.details(block, reply, controller)
+        verify(details.valid)
+        compare(details.sourceText, "First paragraph\nSecond paragraph")
+        compare(details.replacementText, "Updated paragraph")
+        compare(details.searchReplaceCount, 1)
+        compare(controller.callCount(), 1)
     }
 
     function test_proposalDetailsExtractToggleTitleAndCopyableBody() {

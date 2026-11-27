@@ -9,17 +9,35 @@ function stripProposalFence(value) { return BlockAiMarkdown.stripProposalFence(v
 function markdownToHtml(value) { return BlockAiMarkdown.markdownToHtml(value) }
 function richContentHtml(value) { return BlockAiMarkdown.richContentHtml(value) }
 
+function plainTextFromHtml(value) {
+    return String(value || "")
+        .replace(/<br\s*\/?\s*>/gi, "\n")
+        .replace(/<\/(p|div|li|h[1-6]|tr|blockquote)\s*>/gi, "\n")
+        .replace(/<[^>]*>/g, "")
+        .replace(/&nbsp;/gi, " ")
+        .replace(/&lt;/gi, "<")
+        .replace(/&gt;/gi, ">")
+        .replace(/&quot;/gi, "\"")
+        .replace(/&#39;|&apos;/gi, "'")
+        .replace(/&amp;/gi, "&")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim()
+}
+
 function applySearchReplace(source, proposal, controller) {
     if (!controller || typeof controller.applyNoteSearchReplace !== "function")
-        return { found: false, success: false, result: "", error: "Core search/replace is unavailable." }
+        return { found: false, success: false, result: "", parsedCount: 0, replacedCount: 0, error: "Core search/replace is unavailable." }
     var result = controller.applyNoteSearchReplace(String(source || ""), String(proposal || ""))
     if (!result || typeof result.success !== "boolean")
-        return { found: false, success: false, result: "", error: "Core returned an invalid search/replace result." }
+        return { found: false, success: false, result: "", parsedCount: 0, replacedCount: 0, error: "Core returned an invalid search/replace result." }
+    var parsedCount = Number(result.parsedCount || 0)
     var replacedCount = Number(result.replacedCount || 0)
     return {
         found: replacedCount > 0 || !result.success,
         success: result.success,
         result: String(result.result || ""),
+        parsedCount: parsedCount,
+        replacedCount: replacedCount,
         error: String(result.error || "")
     }
 }
@@ -49,12 +67,15 @@ function codeProposal(value) {
     return { code: content, language: "" }
 }
 
-function replacementForBlock(block, reply, controller) {
+function replacementForBlock(block, reply, controller, searchReplaceResult) {
     if (!block || !block.id) return null
     var next = cloneBlock(block)
     var content = stripProposalFence(reply)
     if (block.blockType === "codeBlock") {
-        var codeChange = applySearchReplace(String(block.attrs.code || block.innerHtml || ""), content, controller)
+        var sourceCode = block.attrs && block.attrs.code !== undefined
+            ? String(block.attrs.code)
+            : String(block.innerHtml || "")
+        var codeChange = searchReplaceResult || applySearchReplace(sourceCode, content, controller)
         var proposal = codeProposal(content)
         next.attrs.code = codeChange.found ? (codeChange.success ? codeChange.result : "") : proposal.code
         if (codeChange.found && !codeChange.success) return null
@@ -64,8 +85,8 @@ function replacementForBlock(block, reply, controller) {
     }
 
     var body = content
-    var rawBody = String(block.innerHtml || block.html || "").replace(/<[^>]*>/g, "")
-    var bodyChange = applySearchReplace(rawBody, body, controller)
+    var rawBody = plainTextFromHtml(block.innerHtml || block.html || "")
+    var bodyChange = searchReplaceResult || applySearchReplace(rawBody, body, controller)
     if (bodyChange.found) {
         if (!bodyChange.success) return null
         body = bodyChange.result

@@ -13,6 +13,7 @@ pub struct SearchReplaceBlock {
 pub struct SearchReplaceResult {
     pub success: bool,
     pub result: String,
+    pub parsed_count: usize,
     pub replaced_count: usize,
     pub error: Option<String>,
 }
@@ -105,6 +106,7 @@ pub fn apply_search_replace(original: &str, blocks: &[SearchReplaceBlock]) -> Se
         return SearchReplaceResult {
             success: true,
             result: original.to_string(),
+            parsed_count: 0,
             replaced_count: 0,
             error: None,
         };
@@ -147,6 +149,7 @@ pub fn apply_search_replace(original: &str, blocks: &[SearchReplaceBlock]) -> Se
         return SearchReplaceResult {
             success: false,
             result: original.to_string(),
+            parsed_count: blocks.len(),
             replaced_count: count,
             error: Some(format!(
                 "Trecho de busca não encontrado no bloco #{}.",
@@ -158,6 +161,7 @@ pub fn apply_search_replace(original: &str, blocks: &[SearchReplaceBlock]) -> Se
     SearchReplaceResult {
         success: true,
         result: current,
+        parsed_count: blocks.len(),
         replaced_count: count,
         error: None,
     }
@@ -213,7 +217,6 @@ fn replace_once_js_compatible(
 
 #[cfg(test)]
 mod tests {
-    use super::super::diff_engine::compute_word_diff_html;
     use super::*;
 
     #[test]
@@ -223,6 +226,7 @@ mod tests {
         assert_eq!(blocks.len(), 1);
         let res = apply_search_replace("alpha\nhello world\nomega", &blocks);
         assert!(res.success);
+        assert_eq!(res.parsed_count, 1);
         assert_eq!(res.replaced_count, 1);
         assert_eq!(res.result, "alpha\nhello rust\nomega");
     }
@@ -285,12 +289,5 @@ mod tests {
         );
         assert!(result.success);
         assert_eq!(result.result, "before [$][target][before ][ after] after");
-    }
-
-    #[test]
-    fn computes_ordered_word_diff() {
-        let diff = compute_word_diff_html("rust is fast", "rust is very fast");
-        assert!(diff.contains("very"));
-        assert!(diff.contains("6ee7b7"));
     }
 }

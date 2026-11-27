@@ -31,6 +31,7 @@ private slots:
             QStringLiteral("const old = 1;"),
             QStringLiteral("<<<<<<< SEARCH\nconst old = 1;\n=======\nconst next = 2;\n>>>>>>>"));
         QVERIFY(result.value(QStringLiteral("success")).toBool());
+        QCOMPARE(result.value(QStringLiteral("parsedCount")).toInt(), 1);
         QCOMPARE(result.value(QStringLiteral("replacedCount")).toInt(), 1);
         QCOMPARE(result.value(QStringLiteral("result")).toString(), QStringLiteral("const next = 2;"));
 
@@ -50,10 +51,12 @@ private slots:
             QStringLiteral("const old = 1;"),
             QStringLiteral("<<<<<<< SEARCH\nmissing\n=======\nreplacement\n>>>>>>>"));
         QVERIFY(!result.value(QStringLiteral("success")).toBool());
+        QCOMPARE(result.value(QStringLiteral("parsedCount")).toInt(), 1);
         QCOMPARE(result.value(QStringLiteral("result")).toString(), QStringLiteral("const old = 1;"));
 
         result = controller.applyNoteSearchReplace(QStringLiteral("unchanged"), QStringLiteral("No patch"));
         QVERIFY(result.value(QStringLiteral("success")).toBool());
+        QCOMPARE(result.value(QStringLiteral("parsedCount")).toInt(), 0);
         QCOMPARE(result.value(QStringLiteral("replacedCount")).toInt(), 0);
         QCOMPARE(result.value(QStringLiteral("result")).toString(), QStringLiteral("unchanged"));
 
@@ -63,6 +66,7 @@ private slots:
                            "<<<<<<<< SEARCH  \nold value\n=======  \nnew value\n>>>>>>>\n"
                            "<<<<<<< SEARCH\nsecond\n=======\nchanged\n>>>>>>>"));
         QVERIFY(result.value(QStringLiteral("success")).toBool());
+        QCOMPARE(result.value(QStringLiteral("parsedCount")).toInt(), 2);
         QCOMPARE(result.value(QStringLiteral("replacedCount")).toInt(), 2);
         QCOMPARE(result.value(QStringLiteral("result")).toString(), QStringLiteral("new value\nchanged"));
 
@@ -70,6 +74,7 @@ private slots:
             QStringLiteral("before target after"),
             QStringLiteral("<<<<<<< SEARCH\ntarget\n=======\n[$$][$&][$`][$']\n>>>>>>>"));
         QVERIFY(result.value(QStringLiteral("success")).toBool());
+        QCOMPARE(result.value(QStringLiteral("parsedCount")).toInt(), 1);
         QCOMPARE(result.value(QStringLiteral("result")).toString(),
                  QStringLiteral("before [$][target][before ][ after] after"));
     }
