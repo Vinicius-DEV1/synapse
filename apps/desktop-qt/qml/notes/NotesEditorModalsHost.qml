@@ -25,6 +25,7 @@ Item {
     property string selectedPageId: ""
     property string activeTitle: ""
     property string activeContent: ""
+    property var pageList: []
     property var pageHistoryEntries: []
     property Item historyFocusReturnItem: null
     property bool isHistoryOpen: false
@@ -32,6 +33,7 @@ Item {
     property bool isPageEncrypted: false
     property bool isPageUnlocked: true
     property string deleteTargetTitle: ""
+    property string deleteTargetId: ""
     readonly property bool anyBlockingOverlayVisible: isHistoryOpen || isHelpOpen || deleteNoteDialog.visible
 
     signal pageUnlocked()
@@ -136,8 +138,7 @@ Item {
     }
 
     function openDeleteDialog(errMessage) {
-        deleteNoteDialog.errorMessage = errMessage || ""
-        deleteNoteDialog.open()
+        deleteNoteDialog.openForPage(deleteTargetId || selectedPageId, errMessage || "")
     }
 
     function openQuestionSession(batteryId, questionId, title) {
@@ -415,6 +416,11 @@ Item {
     NotesDeleteDialog {
         id: deleteNoteDialog
         anchors.centerIn: parent
+        controller: modalsHost.controller
+        pageList: modalsHost.pageList
+        activeContent: modalsHost.activeContent
+        selectedPageId: modalsHost.selectedPageId
+        pageId: modalsHost.deleteTargetId || modalsHost.selectedPageId
         noteTitle: modalsHost.deleteTargetTitle || modalsHost.activeTitle
         onConfirmed: modalsHost.deleteNoteConfirmed()
         onRejected: modalsHost.deleteCancelled()

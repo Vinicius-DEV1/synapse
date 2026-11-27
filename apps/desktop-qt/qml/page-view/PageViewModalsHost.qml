@@ -140,7 +140,9 @@ Item {
         selectedPageId: hostRoot.selectedPageId
         activeTitle: hostRoot.activeTitle
         activeContent: hostRoot.activeContent
+        pageList: hostRoot.pageList
         deleteTargetTitle: hostRoot.pendingDeleteTargetTitle
+        deleteTargetId: hostRoot.pendingDeleteTargetId || hostRoot.selectedPageId
         pageHistoryEntries: hostRoot.pageHistoryEntries
         historyFocusReturnItem: hostRoot.historyFocusReturnItem
         isHistoryOpen: hostRoot.isHistoryOpen

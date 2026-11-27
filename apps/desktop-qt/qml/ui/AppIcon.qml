@@ -313,6 +313,11 @@ Canvas {
         case "check":
             line([4, 12, 9, 17, 20, 6])
             break
+        case "alert-triangle":
+            line([12, 3, 22, 21, 2, 21, 12, 3])
+            line([12, 9, 12, 14])
+            circle(12, 17, 0.6)
+            break
         case "alert":
             circle(12, 12, 9)
             line([12, 8, 12, 13])

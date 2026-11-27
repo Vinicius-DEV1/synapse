@@ -6,6 +6,7 @@
 #include <QtQml/QQmlContext>
 #include <QtQml/QQmlEngine>
 #include <QtCore/QRegularExpression>
+#include <QtCore/QDateTime>
 #include <QtCore/QUrl>
 #include <QtGui/QColor>
 #include <QtGui/QFont>
@@ -77,6 +78,51 @@ private:
     }
 };
 
+class NotesDeleteDialogController final : public QObject {
+    Q_OBJECT
+
+public:
+    Q_INVOKABLE QVariantList getPageTree(const QString &) const {
+        return {
+            QVariantMap{{QStringLiteral("id"), QStringLiteral("page-one")},
+                        {QStringLiteral("parent_id"), QString()},
+                        {QStringLiteral("title"), QStringLiteral("page-one")}},
+            QVariantMap{{QStringLiteral("id"), QStringLiteral("child-one")},
+                        {QStringLiteral("parent_id"), QStringLiteral("page-one")},
+                        {QStringLiteral("title"), QStringLiteral("child-one")}},
+            QVariantMap{{QStringLiteral("id"), QStringLiteral("page-two")},
+                        {QStringLiteral("parent_id"), QString()},
+                        {QStringLiteral("title"), QStringLiteral("page-two")}},
+        };
+    }
+
+    Q_INVOKABLE QVariantList getCalendarEvents() const {
+        const QString future = QDateTime::currentDateTimeUtc().addDays(2).toString(Qt::ISODate);
+        const QString past = QDateTime::currentDateTimeUtc().addDays(-2).toString(Qt::ISODate);
+        return {
+            QVariantMap{{QStringLiteral("id"), QStringLiteral("root-event")},
+                        {QStringLiteral("title"), QStringLiteral("Root event")},
+                        {QStringLiteral("page_id"), QStringLiteral("page-one")},
+                        {QStringLiteral("start_date"), future}},
+            QVariantMap{{QStringLiteral("id"), QStringLiteral("child-event")},
+                        {QStringLiteral("title"), QStringLiteral("Child event")},
+                        {QStringLiteral("page_id"), QStringLiteral("child-one")},
+                        {QStringLiteral("start_date"), future}},
+            QVariantMap{{QStringLiteral("id"), QStringLiteral("inline-event")},
+                        {QStringLiteral("title"), QStringLiteral("Inline event")},
+                        {QStringLiteral("start_date"), future}},
+            QVariantMap{{QStringLiteral("id"), QStringLiteral("expired-event")},
+                        {QStringLiteral("title"), QStringLiteral("Expired event")},
+                        {QStringLiteral("page_id"), QStringLiteral("page-one")},
+                        {QStringLiteral("start_date"), past}},
+            QVariantMap{{QStringLiteral("id"), QStringLiteral("unrelated-event")},
+                        {QStringLiteral("title"), QStringLiteral("Unrelated event")},
+                        {QStringLiteral("page_id"), QStringLiteral("page-two")},
+                        {QStringLiteral("start_date"), future}},
+        };
+    }
+};
+
 class NativeNotesPageHistoryTest final : public QObject {
     Q_OBJECT
 
@@ -90,6 +136,49 @@ class NativeNotesPageHistoryTest final : public QObject {
     }
 
 private slots:
+    void deleteDialogListsUpcomingSubtreeEvents() {
+        QQmlEngine engine;
+        NotesDeleteDialogController controller;
+        QQmlComponent component(&engine);
+        component.loadUrl(QUrl::fromLocalFile(QStringLiteral(SYNAPSE_DESKTOP_SOURCE_DIR)
+                                             + QStringLiteral("/qml/notes/NotesDeleteDialog.qml")));
+        QScopedPointer<QObject> dialog(component.create());
+        QVERIFY2(dialog, qPrintable(component.errorString()));
+        QQuickWindow window;
+        window.resize(640, 480);
+        QVERIFY(dialog->property("parent").isValid());
+        dialog->setProperty("parent", QVariant::fromValue(window.contentItem()));
+        window.show();
+        QTRY_VERIFY(window.isVisible());
+        dialog->setProperty("controller", QVariant::fromValue(static_cast<QObject *>(&controller)));
+        dialog->setProperty("selectedPageId", QStringLiteral("page-one"));
+        dialog->setProperty("noteTitle", QStringLiteral("page-one"));
+        dialog->setProperty("pageList", QVariant::fromValue(controller.getPageTree(QString())));
+        dialog->setProperty("activeContent", QStringLiteral("<div data-event-id=\"inline-event\"></div>"));
+
+        QVERIFY(QMetaObject::invokeMethod(dialog.data(), "openForPage", Qt::DirectConnection,
+                                          Q_ARG(QVariant, QVariant(QStringLiteral("page-one"))),
+                                          Q_ARG(QVariant, QVariant(QString()))));
+        QTRY_VERIFY(dialog->property("visible").toBool());
+        QTRY_VERIFY(dialog->property("width").toReal() > 0.0);
+        QTRY_VERIFY(dialog->property("height").toReal() > 0.0);
+        QCOMPARE(dialog->property("activeEvents").toList().size(), 3);
+        QCOMPARE(dialog->property("hasActiveEvents").toBool(), true);
+
+        QObject *warning = dialog->findChild<QObject *>(QStringLiteral("notesDeleteEventsWarning"));
+        QVERIFY(warning);
+        QObject *confirmButton = dialog->findChild<QObject *>(QStringLiteral("notesDeleteConfirmButton"));
+        QVERIFY(confirmButton);
+        QVERIFY(confirmButton->property("text").toString().contains(QStringLiteral("3 evento(s)")));
+        QObject *eventList = dialog->findChild<QObject *>(QStringLiteral("notesDeleteEventList"));
+        QVERIFY(eventList);
+        QCOMPARE(eventList->property("count").toInt(), 3);
+        QObject *cancelButton = dialog->findChild<QObject *>(QStringLiteral("notesDeleteCancelButton"));
+        QVERIFY(cancelButton);
+        QVERIFY(QMetaObject::invokeMethod(cancelButton, "clicked", Qt::DirectConnection));
+        QTRY_VERIFY(!dialog->property("visible").toBool());
+    }
+
     void failedRestoreSaveKeepsRevisionDirtyForRetry() {
         QQmlEngine engine;
         NotesTextOperations textOperations;
