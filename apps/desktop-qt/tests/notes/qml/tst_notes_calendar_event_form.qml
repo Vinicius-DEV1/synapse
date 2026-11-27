@@ -1,4 +1,7 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
+import QtQuick.Window
 import QtTest
 import "../../../qml/notes" as Notes
 
@@ -13,14 +16,16 @@ TestCase {
     property int closeCount: 0
     property int createCount: 0
     property string insertedHtml: ""
+    property bool failCreate: false
 
     QtObject {
         id: mockController
         property var lastCreateArguments: []
 
         function createNoteCalendarEvent(title, description, start, end, type, color, pageId, reminders, recurrence) {
-            createCount += 1
+            testCase.createCount += 1
             lastCreateArguments = [title, description, start, end, type, color, pageId, reminders, recurrence]
+            if (testCase.failCreate) return { error: "Calendar is locked." }
             return { id: "event-17", title: title, start_date: start, status: "pending" }
         }
     }
@@ -34,10 +39,20 @@ TestCase {
         }
     }
 
+    Component {
+        id: setupModalComponent
+        Notes.NotesSetupWidgetsModal {
+            controller: mockController
+            pageId: "page-4"
+            pageTitle: "Study plan"
+        }
+    }
+
     function init() {
         closeCount = 0
         createCount = 0
         insertedHtml = ""
+        failCreate = false
         mockController.lastCreateArguments = []
         form = createTemporaryObject(formComponent, testCase)
         verify(form !== null)
@@ -71,5 +86,65 @@ TestCase {
         verify(insertedHtml.indexOf('data-event-id="event-17"') >= 0)
         verify(insertedHtml.indexOf('data-page-id="page-4"') >= 0)
         compare(closeCount, 1)
+    }
+
+    function test_eventFieldsExposeReactLabelsDefaultsAndInitialFocus() {
+        var titleLabel = findChild(form, "notesCalendarEventTitleLabel")
+        var titleField = findChild(form, "notesCalendarEventTitleField")
+        var typeLabel = findChild(form, "notesCalendarEventTypeLabel")
+        var typeSelector = findChild(form, "notesCalendarEventTypeSelector")
+        var timeField = findChild(form, "notesCalendarEventTimeField")
+        verify(titleLabel !== null)
+        verify(titleField !== null)
+        verify(typeLabel !== null)
+        verify(typeSelector !== null)
+        verify(timeField !== null)
+        compare(titleLabel.text, "Título do Evento *")
+        compare(titleField.placeholderText, "Ex: Mentoria 01 - Arquitetura")
+        compare(typeLabel.text, "Tipo de Evento")
+        compare(timeField.text, "14:00")
+        compare(form.eventType, "mentoria")
+        compare(form.selectedReminders, [1440, 120, 15, 0])
+        tryVerify(function() { return titleField.activeFocus })
+        keyClick(Qt.Key_Return)
+        compare(createCount, 1)
+        compare(closeCount, 1)
+    }
+
+    function test_failedCoreCreateShowsRetryableError() {
+        failCreate = true
+        var createButton = findChild(form, "notesCalendarEventCreateButton")
+        verify(createButton !== null)
+        createButton.click()
+        compare(createCount, 1)
+        compare(closeCount, 0)
+        compare(insertedHtml, "")
+        compare(form.errorMessage, "Calendar is locked.")
+        verify(createButton.enabled)
+        failCreate = false
+        createButton.click()
+        compare(createCount, 2)
+        compare(closeCount, 1)
+    }
+
+    function test_setupModalUsesReactResponsiveEventCard() {
+        var setupModal = createTemporaryObject(setupModalComponent,
+            testCase.Window.window.contentItem)
+        verify(setupModal !== null)
+        setupModal.openMode("evento", { title: "Review session" })
+
+        var card = findChild(setupModal, "notesSetupModalCard")
+        var title = findChild(setupModal, "notesSetupModalTitle")
+        var calendarIcon = findChild(setupModal, "notesCalendarEventHeaderIcon")
+        verify(card !== null)
+        verify(title !== null)
+        verify(calendarIcon !== null)
+        compare(card.width, 448)
+        compare(title.text, "Criar Evento na Agenda")
+        compare(calendarIcon.width, 18)
+
+        testCase.width = 360
+        tryCompare(card, "width", 328)
+        testCase.width = 560
     }
 }
