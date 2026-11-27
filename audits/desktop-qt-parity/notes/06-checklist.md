@@ -353,4 +353,4 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 - [x] Match React's 150 ms anchored assistant width transition when opening/closing a reply diff; the modal QML suite waits for the 370/420 px target widths.
 - [ ] Compare the Diff glyph stroke weight and Apply/Diff/Insert/Copy hover and disabled states against React in a real matched-viewport capture; the offscreen QML runner does not establish pointer hover appearance.
 - [x] Verify a production `PageView` page switch while block AI generation is pending; deliver the late response and assert neither SQLite page changes. The focused `notes-ai-toggle-targets` suite passes.
-- [ ] Verify removing the source block during an active request cannot apply or append a late response (QT-NOTES-110).
+- [x] Verify removing the source toggle during an active AI request cannot apply or append a late response. A production `PageView`/temporary-SQLite test confirms the removed content stays gone and its callout neighbor remains unchanged.
