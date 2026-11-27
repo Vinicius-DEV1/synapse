@@ -6,6 +6,7 @@ pub mod hierarchy;
 pub mod import_parser;
 pub mod models;
 mod open_attempts;
+mod prompt_duplicates;
 pub mod questions;
 mod repository_attempts;
 

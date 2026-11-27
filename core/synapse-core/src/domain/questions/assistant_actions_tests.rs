@@ -136,3 +136,76 @@ fn rejects_cross_battery_mutations_and_invalid_multiple_choice_payloads() {
         .unwrap()
         .is_empty());
 }
+
+#[test]
+fn rejects_normalized_duplicate_prompts_and_rolls_back_the_action_batch() {
+    let (_file, db, battery_id) = setup();
+    let existing_id = QuizRepository::create_quiz_question(
+        &db,
+        &battery_id,
+        "What is the purpose of a study plan?",
+        r#"["First option", "Second option"]"#,
+        0,
+        None,
+        None,
+    )
+    .unwrap();
+
+    let duplicate = QuizRepository::apply_quiz_assistant_actions(
+        &db,
+        &battery_id,
+        &[
+            action(serde_json::json!({
+                "actionType": "create",
+                "type": "open",
+                "question": "Temporary new prompt",
+                "expectedAnswer": "A temporary answer"
+            })),
+            action(serde_json::json!({
+                "actionType": "create",
+                "type": "open",
+                "question": "  WHAT is the purpose of a study plan?  ",
+                "expectedAnswer": "A duplicate answer"
+            })),
+        ],
+    );
+
+    assert!(duplicate
+        .unwrap_err()
+        .to_string()
+        .contains("same wording already exists"));
+    let questions = QuizRepository::get_battery_questions(&db, &battery_id).unwrap();
+    assert_eq!(questions.len(), 1);
+    assert_eq!(questions[0].id, existing_id);
+}
+
+#[test]
+fn duplicate_prompt_guard_is_scoped_to_active_questions_in_the_same_battery() {
+    let (_file, db, battery_id) = setup();
+    let other_battery = QuizRepository::create_quiz_battery(&db, "Other battery", None).unwrap();
+    QuizRepository::create_quiz_question(
+        &db,
+        &other_battery,
+        "Repeated prompt",
+        r#"["First option", "Second option"]"#,
+        0,
+        None,
+        None,
+    )
+    .unwrap();
+
+    let created = QuizRepository::apply_quiz_assistant_actions(
+        &db,
+        &battery_id,
+        &[action(serde_json::json!({
+            "actionType": "create",
+            "type": "open",
+            "question": "Repeated prompt",
+            "expectedAnswer": "New answer"
+        }))],
+    )
+    .unwrap();
+
+    assert_eq!(created.len(), 1);
+    assert_eq!(created[0].question, "Repeated prompt");
+}

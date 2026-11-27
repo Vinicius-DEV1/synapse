@@ -1,5 +1,6 @@
 use super::authoring::{normalize_tags, parse_options};
 use super::models::{QuizAssistantQuestionAction, QuizQuestion};
+use super::prompt_duplicates::ensure_question_prompt_is_unique;
 use super::questions;
 use crate::error::{Result, SynapseError};
 use chrono::Utc;
@@ -96,6 +97,7 @@ fn create_question(
 ) -> Result<()> {
     let question = question.trim();
     validate_question(question_type, question)?;
+    ensure_question_prompt_is_unique(tx, battery_id, question)?;
     let options_json = serde_json::to_string(&options)
         .map_err(|error| SynapseError::Internal(error.to_string()))?;
     let correct_answer = correct_answer(question_type, &options_json, correct_index)?;
