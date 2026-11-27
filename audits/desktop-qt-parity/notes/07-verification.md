@@ -865,7 +865,9 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | Check | Result | Scope and limits |
 | --- | --- | --- |
 | `cargo test -p synapse-core assistant_actions_tests -- --nocapture` | Passed: 5 focused tests | Verifies assistant create/edit/delete/reorder behavior, rejection of case/whitespace-normalized duplicate prompts, full batch rollback when one proposed create duplicates an active same-battery question, and independence across batteries. This guards exact normalized wording only; semantic paraphrase detection is not implemented. |
-| `cargo check -p synapse-bridge-qt` | Passed | Confirms the Qt bridge still compiles against the Core assistant-action API; no bridge contract changed. |
+| `cargo check -p synapse-bridge-qt` and `cargo build --release -p synapse-bridge-qt` | Passed | Checks and rebuilds the Qt bridge so the native desktop test executable links the updated Core behavior. |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop-tests -j2` | Passed | Reconfigured and linked the native test target against the rebuilt release bridge. |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen apps/desktop-qt/build/synapse-desktop-tests --suite=notes-assistant-actions` | Passed: 1 behavior test (3 QtTest results including setup/cleanup) | Creates a temporary SQLite database, inserts an original open question, sends a case/whitespace-variant duplicate through `SynapseDataController`, and confirms the FFI/Core error returns while the battery still contains only the original. |
 | `rustfmt --edition 2021 --check` for changed Core modules | Passed | Checked `assistant_actions.rs`, its focused tests, and `prompt_duplicates.rs`; `mod.rs` was checked with child traversal disabled. |
 | `git diff --check` | Passed | No whitespace errors. |
 | Live model paraphrases, deleted-question re-use, and real Notes Markdown assistant insertion | Not run | Do not claim semantic deduplication or full UI acceptance. The Core guard rejects exact prompts after lowercasing and whitespace collapse, within the active target battery only. |
