@@ -96,6 +96,33 @@ private slots:
         QTRY_COMPARE(closeRequested.count(), 1);
         modal->setProperty("visible", false);
         QTRY_VERIFY(focusReturnTarget->hasActiveFocus());
+
+        window.resize(360, 900);
+        modal->setProperty("visible", true);
+        QTRY_COMPARE(qRound(modalItem->width()), 360);
+        QTRY_VERIFY(closeButton->isVisible());
+        const QPointF closeTopRight = closeButton->mapToItem(modalItem, closeButton->width(), 0);
+        QVERIFY(closeTopRight.x() <= modalItem->width() - 20);
+        QQuickItem *overflowButton = findVisualItem(modalItem, QStringLiteral("historyHeaderOverflowButton"));
+        QQuickItem *diffButton = findVisualItem(modalItem, QStringLiteral("historyDiffToggleButton"));
+        QQuickItem *restoreButton = findVisualItem(modalItem, QStringLiteral("historyRestoreButton"));
+        QVERIFY(overflowButton && overflowButton->isVisible());
+        QVERIFY(diffButton && restoreButton);
+        QVERIFY(!diffButton->isVisible());
+        QVERIFY(!restoreButton->isVisible());
+        QAccessibleInterface *accessibleOverflow = QAccessible::queryAccessibleInterface(overflowButton);
+        QVERIFY(accessibleOverflow);
+        QCOMPARE(accessibleOverflow->text(QAccessible::Name), QStringLiteral("Mais ações do histórico"));
+        overflowButton->forceActiveFocus();
+        QTest::keyClick(&window, Qt::Key_Space);
+        QObject *overflowMenu = modal->findChild<QObject *>(QStringLiteral("historyHeaderOverflowMenu"));
+        QVERIFY(overflowMenu);
+        QTRY_VERIFY(overflowMenu->property("visible").toBool());
+        QObject *diffAction = overflowMenu->findChild<QObject *>(QStringLiteral("historyDiffMenuItem"));
+        QObject *restoreAction = overflowMenu->findChild<QObject *>(QStringLiteral("historyRestoreMenuItem"));
+        QVERIFY(diffAction && restoreAction);
+        QVERIFY(diffAction->property("enabled").toBool());
+        QVERIFY(!restoreAction->property("enabled").toBool());
     }
 };
 
