@@ -115,8 +115,9 @@ Rectangle {
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 8
-                    Text { text: "Histórico de Edições"; color: theme.textDark; font.pixelSize: 14; font.bold: true }
+                    Text { objectName: "historyModalTitle"; text: "Histórico de Edições"; color: theme.textDark; font.pixelSize: 14; font.bold: true }
                     Text {
+                        objectName: "historyRevisionCount"
                         text: "• " + historyRoot.history.length + (historyRoot.history.length === 1 ? " revisão" : " revisões")
                         color: theme.textMuted
                         font.pixelSize: 12
@@ -129,7 +130,7 @@ Rectangle {
                     objectName: "historyDiffToggleButton"
                     text: historyRoot.showDiff ? qsTr("Modo Diff Ativo ✓") : qsTr("Ver Diff")
                     flat: true
-                    visible: historyRoot.width >= 640 && historyRoot.previousEntry() !== null
+                    visible: historyRoot.width >= 768 && historyRoot.previousEntry() !== null
                     onClicked: historyRoot.showDiff = !historyRoot.showDiff
                     contentItem: Text {
                         text: parent.text
@@ -142,7 +143,7 @@ Rectangle {
                     objectName: "historyRestoreButton"
                     text: qsTr("Restaurar Esta Versão")
                     flat: true
-                    visible: historyRoot.width >= 640 && historyRoot.selectedIndex > 0 && historyRoot.selectedEntry() !== null
+                    visible: historyRoot.width >= 768 && historyRoot.selectedIndex > 0 && historyRoot.selectedEntry() !== null
                     onClicked: historyRoot.restoreSelectedRevision()
                     contentItem: Text {
                         text: parent.text
@@ -154,7 +155,7 @@ Rectangle {
 
                 ToolButton {
                     objectName: "historyHeaderOverflowButton"
-                    visible: historyRoot.width < 640
+                    visible: historyRoot.width < 768
                     text: "⋯"
                     Accessible.name: qsTr("Mais ações do histórico")
                     implicitWidth: 28
