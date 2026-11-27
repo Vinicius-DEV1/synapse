@@ -156,7 +156,7 @@ Item {
                 Label {
                     objectName: "notesRichImageDeleteTitle"
                     Layout.fillWidth: true
-                    text: qsTr("Delete image")
+                    text: qsTr("Excluir Imagem")
                     color: "#fffffe"
                     font.pixelSize: 18
                     font.weight: Font.Medium
@@ -166,9 +166,9 @@ Item {
                     objectName: "notesRichImageDeleteCloseButton"
                     Layout.preferredWidth: 28
                     Layout.preferredHeight: 28
-                    Accessible.name: qsTr("Cancel and close")
+                    Accessible.name: qsTr("Cancelar e fechar")
                     ToolTip.visible: hovered
-                    ToolTip.text: qsTr("Cancel and close (do not delete)")
+                    ToolTip.text: qsTr("Cancelar e fechar (não excluir)")
                     Keys.priority: Keys.BeforeItem
                     Keys.onPressed: function(event) {
                         if (deleteDialog.handleKey(event)) event.accepted = true
@@ -200,7 +200,7 @@ Item {
                 topPadding: 20
                 color: "#fffffe"
                 font.pixelSize: 14
-                text: qsTr("Do you really want to delete this image?")
+                text: qsTr("Deseja realmente excluir esta imagem?")
             }
             Label {
                 objectName: "notesRichImageDeleteDescription"
@@ -211,7 +211,7 @@ Item {
                 bottomPadding: 20
                 color: "#a7a9be"
                 font.pixelSize: 12
-                text: qsTr("This action will remove the selected image from the document.")
+                text: qsTr("Esta ação removerá a imagem selecionada do documento.")
             }
         }
 
@@ -228,8 +228,8 @@ Item {
                 Button {
                     id: cancelButton
                     objectName: "notesRichImageDeleteCancelButton"
-                    text: qsTr("Cancel")
-                    Accessible.name: qsTr("Cancel")
+                    text: qsTr("Cancelar")
+                    Accessible.name: qsTr("Cancelar")
                     Keys.priority: Keys.BeforeItem
                     Keys.onPressed: function(event) {
                         if (deleteDialog.handleKey(event)) event.accepted = true
@@ -252,8 +252,8 @@ Item {
                 Button {
                     id: confirmButton
                     objectName: "notesRichImageDeleteConfirmButton"
-                    text: qsTr("Delete")
-                    Accessible.name: qsTr("Confirm deleting image")
+                    text: qsTr("Excluir")
+                    Accessible.name: qsTr("Confirmar exclusão da imagem")
                     Keys.priority: Keys.BeforeItem
                     Keys.onPressed: function(event) {
                         if (deleteDialog.handleKey(event)) event.accepted = true

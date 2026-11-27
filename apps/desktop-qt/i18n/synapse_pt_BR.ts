@@ -2175,24 +2175,36 @@ Editor shortcuts are disabled while an editor dialog is open.</translation>
   <context>
     <name>NotesRichImageDeletion</name>
     <message>
-      <source>Delete image</source>
-      <translation>Delete image</translation>
+      <source>Excluir Imagem</source>
+      <translation>Excluir Imagem</translation>
     </message>
     <message>
-      <source>Cancel image deletion</source>
-      <translation>Cancel image deletion</translation>
+      <source>Cancelar e fechar</source>
+      <translation>Cancelar e fechar</translation>
     </message>
     <message>
-      <source>Delete this image from the note? This edit can be undone.</source>
-      <translation>Delete this image from the note? This edit can be undone.</translation>
+      <source>Cancelar e fechar (não excluir)</source>
+      <translation>Cancelar e fechar (não excluir)</translation>
     </message>
     <message>
-      <source>Cancel</source>
-      <translation>Cancel</translation>
+      <source>Deseja realmente excluir esta imagem?</source>
+      <translation>Deseja realmente excluir esta imagem?</translation>
     </message>
     <message>
-      <source>Confirm deleting image</source>
-      <translation>Confirm deleting image</translation>
+      <source>Esta ação removerá a imagem selecionada do documento.</source>
+      <translation>Esta ação removerá a imagem selecionada do documento.</translation>
+    </message>
+    <message>
+      <source>Cancelar</source>
+      <translation>Cancelar</translation>
+    </message>
+    <message>
+      <source>Confirmar exclusão da imagem</source>
+      <translation>Confirmar exclusão da imagem</translation>
+    </message>
+    <message>
+      <source>Excluir</source>
+      <translation>Excluir</translation>
     </message>
   </context>
   <context>
@@ -2371,8 +2383,8 @@ Editor shortcuts are disabled while an editor dialog is open.</translation>
       <translation>Download image</translation>
     </message>
     <message>
-      <source>Delete image</source>
-      <translation>Delete image</translation>
+      <source>Excluir imagem</source>
+      <translation>Excluir imagem</translation>
     </message>
   </context>
   <context>

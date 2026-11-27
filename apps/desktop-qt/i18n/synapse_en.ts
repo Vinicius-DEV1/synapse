@@ -2175,24 +2175,36 @@ Editor shortcuts are disabled while an editor dialog is open.</translation>
   <context>
     <name>NotesRichImageDeletion</name>
     <message>
-      <source>Delete image</source>
-      <translation type="unfinished">Delete image</translation>
+      <source>Excluir Imagem</source>
+      <translation>Delete image</translation>
     </message>
     <message>
-      <source>Cancel image deletion</source>
-      <translation type="unfinished">Cancel image deletion</translation>
+      <source>Cancelar e fechar</source>
+      <translation>Cancel and close</translation>
     </message>
     <message>
-      <source>Delete this image from the note? This edit can be undone.</source>
-      <translation type="unfinished">Delete this image from the note? This edit can be undone.</translation>
+      <source>Cancelar e fechar (não excluir)</source>
+      <translation>Cancel and close (do not delete)</translation>
     </message>
     <message>
-      <source>Cancel</source>
-      <translation type="unfinished">Cancel</translation>
+      <source>Deseja realmente excluir esta imagem?</source>
+      <translation>Do you really want to delete this image?</translation>
     </message>
     <message>
-      <source>Confirm deleting image</source>
-      <translation type="unfinished">Confirm deleting image</translation>
+      <source>Esta ação removerá a imagem selecionada do documento.</source>
+      <translation>This action will remove the selected image from the document.</translation>
+    </message>
+    <message>
+      <source>Cancelar</source>
+      <translation>Cancel</translation>
+    </message>
+    <message>
+      <source>Confirmar exclusão da imagem</source>
+      <translation>Confirm deleting image</translation>
+    </message>
+    <message>
+      <source>Excluir</source>
+      <translation>Delete</translation>
     </message>
   </context>
   <context>
@@ -2371,8 +2383,8 @@ Editor shortcuts are disabled while an editor dialog is open.</translation>
       <translation type="unfinished">Download image</translation>
     </message>
     <message>
-      <source>Delete image</source>
-      <translation type="unfinished">Delete image</translation>
+      <source>Excluir imagem</source>
+      <translation>Delete image</translation>
     </message>
   </context>
   <context>

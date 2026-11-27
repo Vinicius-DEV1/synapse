@@ -211,9 +211,9 @@ Item {
             Layout.preferredHeight: 26
             padding: 2
             text: "×"
-            Accessible.name: qsTr("Delete image")
+            Accessible.name: qsTr("Excluir imagem")
             ToolTip.visible: hovered
-            ToolTip.text: qsTr("Delete image")
+            ToolTip.text: qsTr("Excluir imagem")
             contentItem: Text {
                 text: "×"
                 color: "#fda4af"

@@ -101,13 +101,13 @@ private slots:
         QVERIFY(cancelButton);
         QVERIFY(confirmButton);
         QVERIFY(closeButton);
-        QCOMPARE(deleteTitle->property("text").toString(), QString("Delete image"));
+        QCOMPARE(deleteTitle->property("text").toString(), QString("Excluir Imagem"));
         QCOMPARE(deletePrompt->property("text").toString(),
-                 QString("Do you really want to delete this image?"));
+                 QString("Deseja realmente excluir esta imagem?"));
         QCOMPARE(deleteDescription->property("text").toString(),
-                 QString("This action will remove the selected image from the document."));
-        QCOMPARE(cancelButton->property("text").toString(), QString("Cancel"));
-        QCOMPARE(confirmButton->property("text").toString(), QString("Delete"));
+                 QString("Esta ação removerá a imagem selecionada do documento."));
+        QCOMPARE(cancelButton->property("text").toString(), QString("Cancelar"));
+        QCOMPARE(confirmButton->property("text").toString(), QString("Excluir"));
         QVERIFY(confirmButton->property("activeFocus").toBool());
         QCOMPARE(operations.serializeRich(quickDocument).value("html").toString(), originalHtml);
 
