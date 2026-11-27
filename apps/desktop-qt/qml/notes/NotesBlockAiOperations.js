@@ -8,6 +8,7 @@ function cloneBlock(block) {
 function stripProposalFence(value) { return BlockAiMarkdown.stripProposalFence(value) }
 function markdownToHtml(value) { return BlockAiMarkdown.markdownToHtml(value) }
 function richContentHtml(value) { return BlockAiMarkdown.richContentHtml(value) }
+function conversationHtml(value) { return BlockAiMarkdown.conversationHtml(value) }
 
 function plainTextFromHtml(value) {
     return String(value || "")

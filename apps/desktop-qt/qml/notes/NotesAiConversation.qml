@@ -171,7 +171,7 @@ Item {
                                     readOnly: true
                                     text: messageRow.userMessage
                                         ? conversationRoot.displayMessage(messageRow.modelData, messageRow.index)
-                                        : BlockAiOperations.richContentHtml(String(messageRow.modelData.content || ""))
+                                        : BlockAiOperations.conversationHtml(String(messageRow.modelData.content || ""))
                                     textFormat: messageRow.userMessage ? Text.PlainText : Text.RichText
                                     color: messageRow.userMessage ? "#ffffff" : "#e4e4e7"
                                     font.pixelSize: 12

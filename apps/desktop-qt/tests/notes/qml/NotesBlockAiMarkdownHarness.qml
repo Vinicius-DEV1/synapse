@@ -9,4 +9,8 @@ QtObject {
     function richContentHtml(content) {
         return BlockAiMarkdown.richContentHtml(content)
     }
+
+    function conversationHtml(content) {
+        return BlockAiMarkdown.conversationHtml(content)
+    }
 }

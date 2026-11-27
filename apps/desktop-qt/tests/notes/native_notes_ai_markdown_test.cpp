@@ -140,6 +140,18 @@ private slots:
         QVERIFY(taskHtml.contains(QStringLiteral("data-checked=\"false\" data-type=\"taskItem\"")));
         QVERIFY(!taskHtml.contains(QStringLiteral("disabled")));
 
+        QVERIFY(convert(harness.data(), "conversationHtml",
+                        QStringLiteral("1. [x] Finished **today**\n2. [ ] Later"), output));
+        const QString conversationHtml = output.toString();
+        QVERIFY2(conversationHtml.contains(QStringLiteral("<span>☑</span> Finished <strong>today</strong>")),
+                 qPrintable(conversationHtml));
+        QVERIFY(conversationHtml.contains(QStringLiteral("<span>☐</span> Later")));
+
+        QVERIFY(convert(harness.data(), "richContentHtml",
+                        QStringLiteral("1. [x] Finished\n2. [ ] Later"), output));
+        QVERIFY(!output.toString().contains(QStringLiteral("☑")));
+        QVERIFY(!output.toString().contains(QStringLiteral("☐")));
+
         QVERIFY(convert(harness.data(), "richContentHtml",
                         QStringLiteral("- [x] Checked\n- plain bullet\n- [ ] Unchecked"), output));
         const QString mixedListHtml = output.toString();

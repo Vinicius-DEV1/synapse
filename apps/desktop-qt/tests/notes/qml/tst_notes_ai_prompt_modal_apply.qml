@@ -368,7 +368,10 @@ TestCase {
         applyHandler.blockType = "codeBlock"
         modal.controller = {
             copyToClipboard: function() {},
-            computeNoteWordDiffHtml: function(before, after) { return "<del>" + before + "</del><ins>" + after + "</ins>" }
+            computeNoteWordDiffHtml: function(before, after) { return "<del>" + before + "</del><ins>" + after + "</ins>" },
+            applyNoteSearchReplace: function() {
+                return { success: true, parsedCount: 1, replacedCount: 1, result: "const first = 10;", error: "" }
+            }
         }
         modal.openModal("", sourceBlock.innerHtml, applyHandler)
         modal.chatHistory = [{

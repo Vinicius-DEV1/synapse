@@ -160,7 +160,9 @@ function renderTableRow(cells, alignments, cellTag) {
     return output + "</tr>"
 }
 
-function markdownToHtml(value) {
+function orderedTaskPrefix(item, listType, enabled) { return enabled && listType === "ordered" && item.checked !== null ? "<span>" + (item.checked ? "☑" : "☐") + "</span> " : "" }
+
+function markdownToHtml(value, showOrderedTaskState) {
     var lines = stripProposalFence(value).replace(/\r\n?/g, "\n").split("\n")
     var output = []
     var paragraph = []
@@ -190,7 +192,7 @@ function markdownToHtml(value) {
                         "<label><input type=\"checkbox\"" + (checked ? " checked=\"checked\"" : "") +
                         "/><span></span></label><div><p>" + inlineMarkdown(item.text) + "</p></div></li>"
                 }
-                return "<li><p>" + inlineMarkdown(item.text) + "</p></li>"
+                return "<li><p>" + orderedTaskPrefix(item, listType, showOrderedTaskState) + inlineMarkdown(item.text) + "</p></li>"
             }).join("") + "</" + tag + ">")
             segment = []
         }
@@ -265,7 +267,7 @@ function markdownToHtml(value) {
             listType = nextListType
             listItems.push({
                 text: (task || orderedTask || unordered || ordered)[task || orderedTask ? 2 : 1],
-                checked: task ? task[1].toLowerCase() === "x" : null
+                checked: task ? task[1].toLowerCase() === "x" : orderedTask ? orderedTask[1].toLowerCase() === "x" : null
             })
             continue
         }
@@ -289,4 +291,9 @@ function richContentHtml(value) {
     if (/<(?:p|div|ul|ol|li|pre|blockquote|h[1-6]|hr|table|img)\b/i.test(content))
         return sanitizeRichHtml(content)
     return sanitizeRichHtml(markdownToHtml(content), true)
+}
+
+function conversationHtml(value) {
+    var content = stripProposalFence(value)
+    return sanitizeRichHtml(/<(?:p|div|ul|ol|li|pre|blockquote|h[1-6]|hr|table|img)\b/i.test(content) ? content : markdownToHtml(content, true), true)
 }
