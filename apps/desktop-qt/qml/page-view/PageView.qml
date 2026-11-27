@@ -43,6 +43,7 @@ Rectangle {
     property bool isHistoryOpen: false
     property bool isHelpOpen: false
     property var pageHistoryEntries: []
+    property Item historyFocusReturnItem: null
     property var scrollPositionMap: ({})
     property var pageByIdMap: ({})
     property int wordCount: 0
@@ -453,7 +454,8 @@ Rectangle {
                     onShareRequested: pageViewRoot.shareRequested(pageViewRoot.selectedPageId)
                     onDuplicateRequested: pageViewRoot.duplicateCurrentPage()
                     onExportRequested: viewModals.openExport(pageViewRoot.selectedPageId)
-                    onHistoryRequested: {
+                    onHistoryRequested: function(triggerItem) {
+                        pageViewRoot.historyFocusReturnItem = triggerItem
                         if (pageViewRoot.controller) pageViewRoot.pageHistoryEntries = pageViewRoot.controller.getPageHistory(pageViewRoot.selectedPageId) || []
                         pageViewRoot.isHistoryOpen = true
                     }
@@ -555,6 +557,7 @@ Rectangle {
         isPageUnlocked: pageViewRoot.isPageUnlocked
         pageList: pageViewRoot.pageList
         pageHistoryEntries: pageViewRoot.pageHistoryEntries
+        historyFocusReturnItem: pageViewRoot.historyFocusReturnItem
         isHistoryOpen: pageViewRoot.isHistoryOpen
         isHelpOpen: pageViewRoot.isHelpOpen
         onHistoryClosed: pageViewRoot.isHistoryOpen = false

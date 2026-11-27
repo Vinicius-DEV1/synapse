@@ -36,7 +36,7 @@ ColumnLayout {
     signal deleteRequested()
     signal duplicateRequested()
     signal exportRequested()
-    signal historyRequested()
+    signal historyRequested(Item triggerItem)
     signal helpRequested()
     signal shareRequested()
     signal moveRequested(string pageId)
@@ -141,32 +141,16 @@ ColumnLayout {
                     { key: "move", icon: "file-symlink", label: qsTr("Mover"), tip: qsTr("Mover página…") },
                     { key: "history", icon: "clock", label: qsTr("Histórico"), tip: qsTr("Histórico de edições") }
                 ]
-                delegate: Rectangle {
-                    id: actionBtnDelegate
+                delegate: PageHeaderActionButton {
                     required property var modelData
-                    Layout.preferredHeight: 28
-                    Layout.preferredWidth: btnRow.implicitWidth + 14
-                    radius: 8
-                    color: btnMouse.containsMouse ? theme.activePillBg : "transparent"
-                    ToolTip.visible: btnMouse.containsMouse
-                    ToolTip.text: actionBtnDelegate.modelData.tip
-                    RowLayout {
-                        id: btnRow
-                        anchors.centerIn: parent
-                        spacing: 5
-                        AppIcon { name: actionBtnDelegate.modelData.icon; color: btnMouse.containsMouse ? theme.brand300 : theme.textSubtext; Layout.preferredWidth: 14; Layout.preferredHeight: 14 }
-                        Text { text: actionBtnDelegate.modelData.label; color: btnMouse.containsMouse ? theme.brand300 : theme.textSubtext; font.pixelSize: 12; font.weight: Font.Medium }
-                    }
-                    MouseArea {
-                        id: btnMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            if (actionBtnDelegate.modelData.key === "share") pageHeader.shareRequested()
-                            else if (actionBtnDelegate.modelData.key === "move") pageHeader.moveRequested(pageHeader.activePageId)
-                            else if (actionBtnDelegate.modelData.key === "history") pageHeader.historyRequested()
-                        }
+                    actionKey: modelData.key
+                    actionIcon: modelData.icon
+                    actionLabel: modelData.label
+                    tooltipText: modelData.tip
+                    onTriggered: function(actionKey, triggerItem) {
+                        if (actionKey === "share") pageHeader.shareRequested()
+                        else if (actionKey === "move") pageHeader.moveRequested(pageHeader.activePageId)
+                        else if (actionKey === "history") pageHeader.historyRequested(triggerItem)
                     }
                 }
             }

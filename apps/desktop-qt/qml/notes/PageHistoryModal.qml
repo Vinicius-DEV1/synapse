@@ -11,6 +11,7 @@ Rectangle {
     color: "#0f0f11"
 
     property var controller: null
+    property Item focusReturnItem: null
     property var history: []
     property int selectedIndex: 0
     property bool showDiff: true
@@ -68,6 +69,13 @@ Rectangle {
     }
 
     onVisibleChanged: if (visible) selectedIndex = 0
+
+    PageHistoryFocusManager {
+        modalVisible: historyRoot.visible
+        hasRevisions: historyRoot.history.length > 0
+        revisionTarget: revisionList.currentItem
+        returnTarget: historyRoot.focusReturnItem
+    }
 
     Shortcut {
         sequence: "Escape"

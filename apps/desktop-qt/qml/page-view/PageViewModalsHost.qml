@@ -12,6 +12,7 @@ Item {
     property string activeContent: ""
     property var pageList: []
     property var pageHistoryEntries: []
+    property Item historyFocusReturnItem: null
     property bool isHistoryOpen: false
     property bool isHelpOpen: false
     property bool activeIsEncrypted: false
@@ -139,6 +140,7 @@ Item {
         activeContent: hostRoot.activeContent
         deleteTargetTitle: hostRoot.pendingDeleteTargetTitle
         pageHistoryEntries: hostRoot.pageHistoryEntries
+        historyFocusReturnItem: hostRoot.historyFocusReturnItem
         isHistoryOpen: hostRoot.isHistoryOpen
         isHelpOpen: hostRoot.isHelpOpen
         isPageEncrypted: hostRoot.activeIsEncrypted

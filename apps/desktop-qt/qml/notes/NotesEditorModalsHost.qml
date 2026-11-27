@@ -26,6 +26,7 @@ Item {
     property string activeTitle: ""
     property string activeContent: ""
     property var pageHistoryEntries: []
+    property Item historyFocusReturnItem: null
     property bool isHistoryOpen: false
     property bool isHelpOpen: false
     property bool isPageEncrypted: false
@@ -281,6 +282,7 @@ Item {
         controller: modalsHost.controller
         visible: modalsHost.isHistoryOpen
         history: modalsHost.pageHistoryEntries
+        focusReturnItem: modalsHost.historyFocusReturnItem
         onCloseRequested: modalsHost.historyClosed()
         onRestoreRevisionRequested: function(content) { modalsHost.restoreRevisionRequested(content) }
     }
