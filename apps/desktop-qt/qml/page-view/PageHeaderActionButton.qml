@@ -5,6 +5,7 @@ import "../ui"
 
 Button {
     id: actionButton
+    objectName: "pageHeaderAction-" + actionKey
 
     required property string actionKey
     required property string actionIcon

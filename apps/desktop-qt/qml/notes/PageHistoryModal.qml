@@ -5,6 +5,7 @@ import ".."
 
 Rectangle {
     id: historyRoot
+    objectName: "pageHistoryModal"
     anchors.fill: parent
     z: 110
     visible: false

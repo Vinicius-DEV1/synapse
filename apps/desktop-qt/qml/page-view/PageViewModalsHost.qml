@@ -5,6 +5,8 @@ import "../modals"
 // Consolidated modal host for PageView to keep PageView.qml modular and under 250 lines.
 Item {
     id: hostRoot
+    objectName: "pageViewModalsHost"
+    anchors.fill: parent
 
     property var controller: null
     property string selectedPageId: ""
