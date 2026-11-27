@@ -74,6 +74,7 @@ Item {
         selectedText = String(selection || "")
         noteContextHtml = String(fullHtml || "")
         blockApplyHandler = typeof applyHandler === "function" ? applyHandler : null
+        if (blockScoped) BlockAiSession.configure(controller)
         chatHistory = blockScoped ? BlockAiSession.load(blockApplyHandler.sessionId) : []
         aiReply = ""
         for (var i = chatHistory.length - 1; i >= 0; --i) {
