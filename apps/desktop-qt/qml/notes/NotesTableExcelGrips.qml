@@ -8,7 +8,7 @@ import "components/table/TableGripsHelpers.js" as Helpers
 // Excel-style Table Grips, Drag-to-Reorder Col/Row, Visual Filter Hide/Reset & Width Resize.
 Item {
     id: gripsRoot
-    visible: Boolean(tableActions && tableActions.isInsideTable && textEditor && textEditor.activeFocus)
+    visible: Boolean(editorRoot && editorRoot.active && tableActions && tableActions.isInsideTable && textEditor && (textEditor.activeFocus || isFiltering))
     z: 98
 
     property var tableActions: null
@@ -65,6 +65,10 @@ Item {
             visibleFilteredRowCount = -1
             return
         }
+        if (unfilteredSourceHtml.length === 0 && editorRoot.hasPendingChanges &&
+                typeof editorRoot.commitEditorText === "function") {
+            editorRoot.commitEditorText()
+        }
         var canonical = unfilteredSourceHtml.length > 0 ? unfilteredSourceHtml : (editorRoot.sourceHtml || "")
         var filterArr = Helpers.buildFilterArray(activeFilters)
         if (filterArr.length === 0) {
@@ -74,7 +78,7 @@ Item {
                 unfilteredSourceHtml = ""
                 editorRoot.hasVisualTableFilter = false
                 textEditor.replaceTableProjection(
-                    editorRoot.textOperations.richSourceForEditorWithPages(restore, editorRoot.pageList || []), false)
+                    editorRoot.textOperations.richSourceForEditorWithPages(restore, editorRoot.pageList || []), false, restore)
             }
             return
         }
@@ -88,7 +92,7 @@ Item {
         visibleFilteredRowCount = Number(projection.visibleRowCount || 0)
         editorRoot.hasVisualTableFilter = true
         textEditor.replaceTableProjection(
-            editorRoot.textOperations.richSourceForEditorWithPages(projection.html, editorRoot.pageList || []), true)
+            editorRoot.textOperations.richSourceForEditorWithPages(projection.html, editorRoot.pageList || []), true, projection.html)
     }
 
     function clearVisualFilters() {
@@ -100,7 +104,7 @@ Item {
         editorRoot.hasVisualTableFilter = false
         if (textEditor && editorRoot.textOperations) {
             textEditor.replaceTableProjection(
-                editorRoot.textOperations.richSourceForEditorWithPages(restore, editorRoot.pageList || []), false)
+                editorRoot.textOperations.richSourceForEditorWithPages(restore, editorRoot.pageList || []), false, restore)
         }
     }
 
@@ -120,7 +124,7 @@ Item {
         editorRoot.contentModified(nextHtml)
         if (editorRoot.textOperations && textEditor) {
             textEditor.replaceTableProjection(
-                editorRoot.textOperations.richSourceForEditorWithPages(nextHtml, editorRoot.pageList || []), false)
+                editorRoot.textOperations.richSourceForEditorWithPages(nextHtml, editorRoot.pageList || []), false, nextHtml)
         }
         syncSchemaFromHtml()
     }
@@ -143,9 +147,10 @@ Item {
                 gripsRoot.editorRoot.hasVisualTableFilter = false
                 Qt.callLater(function() {
                     if (gripsRoot.textEditor && gripsRoot.editorRoot.textOperations) {
+                        var restoredHtml = gripsRoot.editorRoot.sourceHtml || ""
                         gripsRoot.textEditor.replaceTableProjection(
                             gripsRoot.editorRoot.textOperations.richSourceForEditorWithPages(
-                                gripsRoot.editorRoot.sourceHtml || "", gripsRoot.editorRoot.pageList || []), false)
+                                restoredHtml, gripsRoot.editorRoot.pageList || []), false, restoredHtml)
                     }
                 })
             }

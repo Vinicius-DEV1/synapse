@@ -239,10 +239,13 @@ Item {
         selectByMouse: true
         selectByKeyboard: true
         background: null
-        function replaceTableProjection(html, isFiltered) {
+        function replaceTableProjection(html, isFiltered, rawSource) {
             tableFilterProjection = isFiltered
             suppressProjectionTextChange = true
             text = html
+            if (inputRoot.editorRoot && typeof inputRoot.editorRoot.prepareProjectedDocument === "function") {
+                inputRoot.editorRoot.prepareProjectedDocument(rawSource || html, html)
+            }
             Qt.callLater(function() {
                 suppressProjectionTextChange = false
                 inputRoot.syncLoadedPlainText()
@@ -454,6 +457,10 @@ Item {
         z: 3
         acceptedButtons: Qt.AllButtons
         hoverEnabled: true
+        onPressed: function(mouse) {
+            richEditor.forceActiveFocus()
+            mouse.accepted = true
+        }
     }
 
     NotesRichImageDropArea {

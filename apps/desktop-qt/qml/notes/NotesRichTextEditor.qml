@@ -74,6 +74,37 @@ Item {
         return loadSource()
     }
 
+    function prepareDocumentDecorations(rawSource, editorSource) {
+        if (!textOperations.prepareRichImages(editor.textDocument, editorSource)) {
+            return qsTr("This note contains an image that the native editor could not load safely. Switch to source editing to preserve it.")
+        }
+        if (!textOperations.prepareRichPageReferences(editor.textDocument, pageList)) {
+            return qsTr("This note contains a page reference that the native editor could not load as a safe inline object. Switch to source editing to preserve it.")
+        }
+        if (!textOperations.prepareRichHeadings(editor.textDocument, rawSource)) {
+            return qsTr("This note contains formatting that the native editor could not load safely. Switch to source editing to preserve it.")
+        }
+        if (!textOperations.prepareRichCodeBlocks(editor.textDocument, rawSource)) {
+            return qsTr("This note contains a code block that the native editor could not load safely. Switch to source editing to preserve it.")
+        }
+        codeBlockRevision += 1
+        if (!textOperations.prepareRichCallouts(editor.textDocument, rawSource)) {
+            return qsTr("This note contains a callout that the native editor could not load safely. Switch to source editing to preserve it.")
+        }
+        calloutRevision += 1
+        if (!textOperations.prepareRichSpoilers(editor.textDocument)) {
+            return qsTr("This note contains spoiler formatting that the native editor could not load safely. Switch to source editing to preserve it.")
+        }
+        taskListControls.refreshCheckboxes()
+        spoilerRevealControl.refresh()
+        return ""
+    }
+
+    function prepareProjectedDocument(rawSource, editorSource) {
+        if (!editor || !editor.textDocument || !textOperations) return
+        prepareDocumentDecorations(String(rawSource || ""), String(editorSource || ""))
+    }
+
     function loadSource() {
         if (active && hasPendingChanges) return false
         var effectiveSource = (sourceHtml === "<p></p>") ? "<p><br/></p>" : sourceHtml
@@ -93,47 +124,13 @@ Item {
             return false
         }
         editor.text = editorSource.length > 0 ? editorSource : "<p></p>"
-        if (!textOperations.prepareRichImages(editor.textDocument, editorSource)) {
+        var prepareError = prepareDocumentDecorations(effectiveSource, editorSource)
+        if (prepareError.length > 0) {
             isLoading = false
             canEditSource = false
-            validationMessage = qsTr("This note contains an image that the native editor could not load safely. Switch to source editing to preserve it.")
+            validationMessage = prepareError
             return false
         }
-        if (!textOperations.prepareRichPageReferences(editor.textDocument, pageList)) {
-            isLoading = false
-            canEditSource = false
-            validationMessage = qsTr("This note contains a page reference that the native editor could not load as a safe inline object. Switch to source editing to preserve it.")
-            return false
-        }
-        var prepared = textOperations.prepareRichHeadings(editor.textDocument, effectiveSource)
-        if (!prepared) {
-            isLoading = false
-            canEditSource = false
-            validationMessage = qsTr("This note contains formatting that the native editor could not load safely. Switch to source editing to preserve it.")
-            return false
-        }
-        if (!textOperations.prepareRichCodeBlocks(editor.textDocument, effectiveSource)) {
-            isLoading = false
-            canEditSource = false
-            validationMessage = qsTr("This note contains a code block that the native editor could not load safely. Switch to source editing to preserve it.")
-            return false
-        }
-        codeBlockRevision += 1
-        if (!textOperations.prepareRichCallouts(editor.textDocument, effectiveSource)) {
-            isLoading = false
-            canEditSource = false
-            validationMessage = qsTr("This note contains a callout that the native editor could not load safely. Switch to source editing to preserve it.")
-            return false
-        }
-        calloutRevision += 1
-        if (!textOperations.prepareRichSpoilers(editor.textDocument)) {
-            isLoading = false
-            canEditSource = false
-            validationMessage = qsTr("This note contains spoiler formatting that the native editor could not load safely. Switch to source editing to preserve it.")
-            return false
-        }
-        taskListControls.refreshCheckboxes()
-        spoilerRevealControl.refresh()
         richTextInput.syncLoadedPlainText()
         isLoading = false
         lastLoadedSource = sourceHtml
