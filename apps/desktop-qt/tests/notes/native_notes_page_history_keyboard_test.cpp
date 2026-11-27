@@ -48,7 +48,7 @@ private slots:
                         {QStringLiteral("content"), QStringLiteral("<p>Current revision</p>")},
                         {QStringLiteral("created_at"), QStringLiteral("2026-09-02T18:00:00Z")}},
             QVariantMap{{QStringLiteral("id"), QStringLiteral("older")},
-                        {QStringLiteral("content"), QStringLiteral("<p>Older revision</p>")},
+                        {QStringLiteral("content"), QStringLiteral("**Older revision**")},
                         {QStringLiteral("created_at"), QStringLiteral("2026-09-01T18:00:00Z")}},
             QVariantMap{{QStringLiteral("id"), QStringLiteral("undecryptable")},
                         {QStringLiteral("content"), QString()},
@@ -153,10 +153,14 @@ private slots:
         QVERIFY(!restoreAction->property("enabled").toBool());
         modal->setProperty("selectedIndex", 1);
         QTRY_VERIFY(restoreAction->property("enabled").toBool());
+        QQuickItem *revisionContentForMarkdown = findVisualItem(modalItem, QStringLiteral("historyRevisionContent"));
+        QVERIFY(revisionContentForMarkdown);
+        constexpr int markdownTextFormat = 3;
+        QCOMPARE(revisionContentForMarkdown->property("textFormat").toInt(), markdownTextFormat);
         QTest::keyClick(&window, Qt::Key_Down);
         QTest::keyClick(&window, Qt::Key_Return);
         QTRY_COMPARE(restoreRequested.count(), 1);
-        QCOMPARE(restoreRequested.first().first().toString(), QStringLiteral("<p>Older revision</p>"));
+        QCOMPARE(restoreRequested.first().first().toString(), QStringLiteral("**Older revision**"));
         QTRY_COMPARE(closeRequested.count(), 2);
         modal->setProperty("visible", false);
         QTRY_VERIFY(focusReturnTarget->hasActiveFocus());
