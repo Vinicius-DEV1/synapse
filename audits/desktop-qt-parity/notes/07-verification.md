@@ -1,5 +1,15 @@
 # Caderno Verification Plan
 
+### Filtered table projection & persistence iteration (2026-11-27)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `/usr/lib/qt6/bin/qmllint -I apps/desktop-qt/qml apps/desktop-qt/qml/notes/NotesRichTextEditor.qml apps/desktop-qt/qml/notes/NotesRichTextInput.qml apps/desktop-qt/qml/notes/NotesTableExcelGrips.qml` | Passed, exit code 0; existing unqualified-access and unused-import diagnostics remain | All three modified QML files parse with no new diagnostics. |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop-tests -j2` | Passed | Built `synapse-desktop-tests` with `native_notes_table_filter_persistence_test.cpp`. |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen apps/desktop-qt/build/synapse-desktop-tests --suite=notes-table-filter` | Passed: 4 passed, 0 failed (`initTestCase`, `filteredTablePreservesHiddenRowsAcrossSaveAutosavePageSwitchAndReload`, `failedFilterProjectionRestoresCanonicalContentAndEditing`, `cleanupTestCase`) | Qt 6.10.2, offscreen. Production `PageView.qml` + `SynapseDataController` + temporary SQLite database verifies pre-filter pending edit commit, multi-table `tableIndex == 1` filtering, explicit save, autosave, page switch, reload with hidden rows preserved, and failed-projection canonical restoration. Vault lock, modal-open while filtering, crash recovery, and matched-viewport screenshots remain open. |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen /usr/lib/qt6/bin/qmltestrunner -input apps/desktop-qt/tests/notes/qml/tst_notes_table_column_type_popover.qml -import apps/desktop-qt/qml` | Passed: 10 passed, 0 failed | Confirms no regression in the table column-type/filter popover QML suite. |
+| `git diff --check` | Passed | No whitespace errors. |
+
 ### Page deletion event-impact iteration (2026-11-27)
 
 | Check | Result | Scope and limits |
