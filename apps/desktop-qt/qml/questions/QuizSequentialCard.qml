@@ -212,6 +212,7 @@ Rectangle {
 
                     TextArea {
                         id: openInput
+                        objectName: "notesOpenAnswerInput"
                         placeholderText: cardRoot.openAnswerEvaluationEnabled
                             ? qsTr("Escreva sua resposta completa com clareza... (Shift+Enter para nova linha)")
                             : qsTr("Escreva sua resposta para autoavaliação...")

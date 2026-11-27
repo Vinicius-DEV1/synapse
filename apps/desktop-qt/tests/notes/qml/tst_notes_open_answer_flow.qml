@@ -246,25 +246,21 @@ TestCase {
         }
         quizModal.startQuiz("battery-notes", "Notes battery", [choiceQuestion])
 
-        var bindings = quizModal.notesOptionShortcutBindings
-        compare(bindings.length, 16)
-        compare(bindings[0].sequence, "1")
-        compare(bindings[0].optionIndex, 0)
-        var sevenBinding = bindings.filter(function(binding) { return binding.sequence === "7" })[0]
-        var gBinding = bindings.filter(function(binding) { return binding.sequence === "G" })[0]
-        verify(sevenBinding !== undefined)
-        verify(gBinding !== undefined)
-        compare(sevenBinding.optionIndex, 6)
-        compare(gBinding.optionIndex, 6)
+        compare(quizModal.notesOptionIndexForKey(Qt.Key_1), 0)
+        compare(quizModal.notesOptionIndexForKey(Qt.Key_8), 7)
+        compare(quizModal.notesOptionIndexForKey(Qt.Key_9), -1)
+        compare(quizModal.notesOptionIndexForKey(Qt.Key_G), 6)
+        compare(quizModal.notesOptionIndexForKey(Qt.Key_Z), -1)
+        compare(quizModal.notesOptionShortcutsEnabled, true)
 
         quizModal.openAnswerInputFocused = true
         compare(quizModal.notesOptionShortcutsEnabled, false)
-        quizModal.selectNotesOptionByShortcut(gBinding.optionIndex)
+        quizModal.selectNotesOptionByShortcut(quizModal.notesOptionIndexForKey(Qt.Key_G))
         compare(quizModal.selectedOption, -1)
 
         quizModal.openAnswerInputFocused = false
         compare(quizModal.notesOptionShortcutsEnabled, true)
-        quizModal.selectNotesOptionByShortcut(gBinding.optionIndex)
+        quizModal.selectNotesOptionByShortcut(quizModal.notesOptionIndexForKey(Qt.Key_G))
         compare(quizModal.selectedOption, 6)
         quizModal.isConfirmed = true
         quizModal.selectNotesOptionByShortcut(0)

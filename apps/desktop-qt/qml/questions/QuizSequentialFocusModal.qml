@@ -67,20 +67,20 @@ Rectangle {
         && isConfirmed && !openAnswerInputFocused && !isCompleted
         && !showFinishConfirmation && !discussionDialogOpen
     readonly property bool notesOptionShortcutsEnabled: enableNotesOpenAnswerEvaluation
-        && !openAnswerInputFocused && !isConfirmed && !isCompleted && !discussionDialogOpen
-        && !showFinishConfirmation
-    readonly property var notesOptionShortcutBindings: {
-        if (!enableNotesOpenAnswerEvaluation || !currentQuestion
-                || currentQuestion.type !== "multiple_choice"
-                || !Array.isArray(currentQuestion.options)) return []
+        && currentQuestion && currentQuestion.type === "multiple_choice"
+        && !openAnswerInputFocused && !isConfirmed && !isCompleted
+        && !discussionDialogOpen && !showFinishConfirmation
 
-        var bindings = []
-        var optionCount = Math.min(currentQuestion.options.length, 26)
-        for (var index = 0; index < optionCount; index++) {
-            if (index < 9) bindings.push({ sequence: String(index + 1), optionIndex: index })
-            bindings.push({ sequence: String.fromCharCode(65 + index), optionIndex: index })
-        }
-        return bindings
+    Keys.onPressed: function(event) {
+        if (!sequentialModalRoot.notesOptionShortcutsEnabled) return
+
+        var letterKey = event.key >= Qt.Key_A && event.key <= Qt.Key_Z
+        if (letterKey && (event.modifiers & (Qt.AltModifier | Qt.ControlModifier)) !== 0) return
+
+        var optionIndex = sequentialModalRoot.notesOptionIndexForKey(event.key)
+        if (optionIndex < 0) return
+        event.accepted = true
+        sequentialModalRoot.selectNotesOptionByShortcut(optionIndex)
     }
 
     Timer {
@@ -97,15 +97,6 @@ Rectangle {
     Shortcut { sequence: "2"; enabled: sequentialModalRoot.visible && !enableNotesOpenAnswerEvaluation && !isConfirmed && !isCompleted && !sequentialModalRoot.discussionDialogOpen; onActivated: selectOption(1) }
     Shortcut { sequence: "3"; enabled: sequentialModalRoot.visible && !enableNotesOpenAnswerEvaluation && !isConfirmed && !isCompleted && !sequentialModalRoot.discussionDialogOpen; onActivated: selectOption(2) }
     Shortcut { sequence: "4"; enabled: sequentialModalRoot.visible && !enableNotesOpenAnswerEvaluation && !isConfirmed && !isCompleted && !sequentialModalRoot.discussionDialogOpen; onActivated: selectOption(3) }
-    Instantiator {
-        model: sequentialModalRoot.notesOptionShortcutBindings
-        delegate: Shortcut {
-            required property var modelData
-            sequence: modelData.sequence
-            enabled: sequentialModalRoot.visible && sequentialModalRoot.notesOptionShortcutsEnabled
-            onActivated: sequentialModalRoot.selectNotesOptionByShortcut(modelData.optionIndex)
-        }
-    }
     Shortcut { sequence: "Space"; enabled: sequentialModalRoot.visible && !enableNotesOpenAnswerEvaluation && !isCompleted && !sequentialModalRoot.discussionDialogOpen; onActivated: sequentialModalRoot.toggleExplanation() }
     Shortcut {
         objectName: "notesAnsweredSpaceNavigationShortcut"
@@ -324,8 +315,23 @@ Rectangle {
         selectOption(index)
     }
 
+    function notesOptionIndexForKey(key) {
+        if (key >= Qt.Key_1 && key <= Qt.Key_9) {
+            var numberIndex = key - Qt.Key_1
+            return numberIndex < optionsListLength(currentQuestion) ? numberIndex : -1
+        }
+        if (key >= Qt.Key_A && key <= Qt.Key_Z) {
+            var letterIndex = key - Qt.Key_A
+            return letterIndex < optionsListLength(currentQuestion) ? letterIndex : -1
+        }
+        return -1
+    }
+
     function optionsListLength(question) {
-        return question && Array.isArray(question.options) ? question.options.length : 0
+        if (!question || !question.options) return 0
+        var length = question.options.length
+        return typeof length === "number" && isFinite(length) && length >= 0
+            ? Math.floor(length) : 0
     }
 
     function handleConfirmOrNext() {
