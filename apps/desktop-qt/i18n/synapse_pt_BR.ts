@@ -4425,5 +4425,53 @@ Editor shortcuts are disabled while an editor dialog is open.</translation>
       <source>Não foi possível aplicar a proposta. O bloco pode ter mudado ou a resposta ser incompatível.</source>
       <translation>Não foi possível aplicar a proposta. O bloco pode ter mudado ou a resposta ser incompatível.</translation>
     </message>
+    <message>
+      <source>Limpar conversa</source>
+      <translation>Limpar conversa</translation>
+    </message>
+    <message>
+      <source>Substituir Código</source>
+      <translation>Substituir Código</translation>
+    </message>
+    <message>
+      <source>Substituir no Bloco</source>
+      <translation>Substituir no Bloco</translation>
+    </message>
+    <message>
+      <source>Ver resposta</source>
+      <translation>Ver resposta</translation>
+    </message>
+    <message>
+      <source>Ver diferenças</source>
+      <translation>Ver diferenças</translation>
+    </message>
+    <message>
+      <source>Copiar</source>
+      <translation>Copiar</translation>
+    </message>
+    <message>
+      <source>Copiado</source>
+      <translation>Copiado</translation>
+    </message>
+    <message>
+      <source>Inserir</source>
+      <translation>Inserir</translation>
+    </message>
+    <message>
+      <source>Instrução para a IA neste bloco...</source>
+      <translation>Instrução para a IA neste bloco...</translation>
+    </message>
+    <message>
+      <source>Não foi possível inserir conteúdo neste bloco.</source>
+      <translation>Não foi possível inserir conteúdo neste bloco.</translation>
+    </message>
+    <message>
+      <source>Como posso ajudar com este bloco?</source>
+      <translation>Como posso ajudar com este bloco?</translation>
+    </message>
+    <message>
+      <source>O escopo de edição está restrito a este elemento.</source>
+      <translation>O escopo de edição está restrito a este elemento.</translation>
+    </message>
   </context>
 </TS>

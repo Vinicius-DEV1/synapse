@@ -27,6 +27,7 @@ Rectangle {
     property bool isSyncing: false
     property bool readyForUserEdits: false
     property string lastSyncedCode: ""
+    property alias aiButtonItem: aiPromptButton
 
     readonly property var supportedLanguages: [
         "plaintext", "typescript", "javascript", "python", "rust", "cpp",
@@ -199,6 +200,7 @@ Rectangle {
                 }
 
                 ToolButton {
+                    id: aiPromptButton
                     objectName: "notesCodeBlockAiButton"
                     Layout.preferredHeight: 24; Layout.preferredWidth: 26
                     focusPolicy: Qt.NoFocus

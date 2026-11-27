@@ -1,7 +1,10 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import "../ui"
+import "NotesBlockAiSession.js" as BlockAiSession
 
 Item {
     id: aiModalRoot
@@ -18,6 +21,11 @@ Item {
     property var chatHistory: []
     property var blockApplyHandler: null
     property int requestGeneration: 0
+    property bool showDiff: false
+    property int copiedMessageIndex: -1
+    readonly property bool blockScoped: typeof blockApplyHandler === "function"
+    readonly property real blockAnchorX: blockAnchor("anchorX", parent ? parent.width / 2 - 185 : 0)
+    readonly property real blockAnchorY: blockAnchor("anchorY", 16)
     property string aiReply: ""
     property string previewHtml: ""
     property string previewDiffHtml: ""
@@ -27,16 +35,39 @@ Item {
     signal insertTextRequested(string text)
     signal closed()
 
+    function blockMetadata(name) {
+        if (!blockScoped || !blockApplyHandler) return ""
+        return String(blockApplyHandler[name] || "")
+    }
+
+    function blockAnchor(name, fallback) {
+        if (!blockScoped || !blockApplyHandler) return fallback
+        var value = Number(blockApplyHandler[name])
+        return isFinite(value) && value >= 0 ? value : fallback
+    }
+
+    function hasBlockInsertAction() {
+        return blockScoped && blockApplyHandler && typeof blockApplyHandler.insertContent === "function"
+    }
+
     function openModal(selection, fullHtml, applyHandler) {
         requestGeneration++
         selectedText = String(selection || "")
         noteContextHtml = String(fullHtml || "")
         blockApplyHandler = typeof applyHandler === "function" ? applyHandler : null
-        chatHistory = []
+        chatHistory = blockScoped ? BlockAiSession.load(blockApplyHandler.sessionId) : []
         aiReply = ""
+        for (var i = chatHistory.length - 1; i >= 0; --i) {
+            if (chatHistory[i].role === "assistant") {
+                aiReply = String(chatHistory[i].content || "")
+                break
+            }
+        }
         previewHtml = ""
         previewDiffHtml = ""
         errorText = ""
+        showDiff = false
+        copiedMessageIndex = -1
         customInput.text = ""
         isOpen = true
         customInput.forceActiveFocus()
@@ -48,6 +79,25 @@ Item {
         isOpen = false
         blockApplyHandler = null
         closed()
+    }
+
+    function clearBlockConversation() {
+        if (!blockScoped) return
+        BlockAiSession.clear(blockApplyHandler.sessionId)
+        chatHistory = []
+        aiReply = ""
+        previewHtml = ""
+        previewDiffHtml = ""
+        errorText = ""
+        showDiff = false
+    }
+
+    function copyBlockResponse() {
+        var c = aiModalRoot.controller
+        if (!blockScoped || !aiReply || !c || typeof c.copyToClipboard !== "function") return false
+        c.copyToClipboard(aiReply)
+        copiedMessageIndex = chatHistory.length - 1
+        return true
     }
 
     function applyResponse() {
@@ -87,13 +137,15 @@ Item {
 
         var blockScoped = typeof blockApplyHandler === "function"
         var sysPrompt = blockScoped
-            ? "Você é um assistente de edição do Synapse. Responda em português e trabalhe somente no conteúdo do bloco de referência. Não recrie a casca externa do bloco. Devolva a proposta em Markdown simples, sem explicações fora do conteúdo. Para mudar o título de um toggle, comece com 'Título: Novo título'."
+            ? (blockApplyHandler.blockType === "codeBlock"
+                ? "Você é um assistente de edição de código do Synapse. Trabalhe somente no código atual. Responda em português quando explicar; quando houver proposta de código, devolva código limpo ou um bloco de código cercado, sem criar outro bloco externo."
+                : "Você é um assistente de edição do Synapse. Trabalhe somente no conteúdo deste bloco e não recrie a casca externa. Devolva a proposta em Markdown simples, sem explicações fora do conteúdo. Para mudar o título de um toggle, comece com 'Título: Novo título'.")
             : "Você é um assistente de edição de notas no Synapse. Responda de forma clara e direta em português. Quando reescrever ou editar um trecho existente, devolva o novo texto limpo em HTML simples (<p>, <ul>, <li>, <strong>, <em>)."
         var userPrompt = (chatHistory.length === 0 && baseText.length > 0)
             ? ("Instrução: " + instruction + "\n\nConteúdo de referência:\n" + baseText)
             : instruction
 
-        var c = aiModalRoot.controller || (typeof dataController !== "undefined" ? dataController : null)
+        var c = aiModalRoot.controller
         var historySnapshot = chatHistory.slice()
         aiClient.promptText(sysPrompt, userPrompt, historySnapshot, function(ok, reply, err) {
             if (!aiModalRoot.isOpen || generation !== aiModalRoot.requestGeneration) return
@@ -108,6 +160,7 @@ Item {
                 { role: "user", content: userPrompt },
                 { role: "assistant", content: replyStr }
             ])
+            if (blockScoped) BlockAiSession.save(aiModalRoot.blockApplyHandler.sessionId, aiModalRoot.chatHistory)
             customInput.text = ""
             if (!blockScoped && aiModalRoot.noteContextHtml.length > 0 && c && typeof c.applyNoteSearchReplace === "function") {
                 var patched = c.applyNoteSearchReplace(aiModalRoot.noteContextHtml, replyStr)
@@ -116,6 +169,10 @@ Item {
                     aiModalRoot.previewDiffHtml = c.computeNoteWordDiffHtml(aiModalRoot.noteContextHtml, patched.result)
                     return
                 }
+            }
+            if (blockScoped && aiModalRoot.noteContextHtml.length > 0 && c &&
+                    typeof c.computeNoteWordDiffHtml === "function") {
+                aiModalRoot.previewDiffHtml = c.computeNoteWordDiffHtml(aiModalRoot.noteContextHtml, replyStr)
             }
             aiModalRoot.previewHtml = ""
         })
@@ -135,17 +192,24 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: "#b0000000"
+        color: aiModalRoot.blockScoped ? "transparent" : "#b0000000"
         MouseArea { anchors.fill: parent; onClicked: aiModalRoot.closeModal() }
     }
 
     Rectangle {
-        width: Math.min(parent.width - 48, 560)
-        height: Math.min(parent.height - 48, contentCol.implicitHeight + 40)
-        anchors.centerIn: parent
-        radius: 16
-        color: "#161522"
-        border.color: "#338b5cf6"
+        objectName: "notesAiPromptCard"
+        x: aiModalRoot.blockScoped
+            ? Math.max(12, Math.min(aiModalRoot.blockAnchorX, parent.width - width - 12))
+            : (parent.width - width) / 2
+        y: aiModalRoot.blockScoped
+            ? Math.max(12, Math.min(aiModalRoot.blockAnchorY, parent.height - height - 12))
+            : (parent.height - height) / 2
+        width: aiModalRoot.blockScoped ? Math.min(parent.width - 24, aiModalRoot.showDiff ? 420 : 370)
+            : Math.min(parent.width - 48, 560)
+        height: Math.min(parent.height - 24, aiModalRoot.blockScoped ? 520 : contentCol.implicitHeight + 40)
+        radius: aiModalRoot.blockScoped ? 12 : 16
+        color: aiModalRoot.blockScoped ? "#12141a" : "#161522"
+        border.color: aiModalRoot.blockScoped ? "#1affffff" : "#338b5cf6"
         border.width: 1
 
         MouseArea { anchors.fill: parent }
@@ -153,25 +217,52 @@ Item {
         ColumnLayout {
             id: contentCol
             anchors.fill: parent
-            anchors.margins: 20
-            spacing: 12
+            anchors.margins: aiModalRoot.blockScoped ? 12 : 20
+            spacing: aiModalRoot.blockScoped ? 8 : 12
 
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 8
                 Rectangle {
+                    visible: !aiModalRoot.blockScoped
                     Layout.preferredWidth: 28
                     Layout.preferredHeight: 28
                     radius: 8
                     color: "#268b5cf6"
                     AppIcon { anchors.centerIn: parent; name: "sparkles"; color: "#c4b5fd"; width: 15; height: 15 }
                 }
+                AppIcon {
+                    visible: aiModalRoot.blockScoped
+                    name: "sparkles"
+                    color: "#a78bfa"
+                    Layout.preferredWidth: 14
+                    Layout.preferredHeight: 14
+                }
                 Text {
-                    text: aiModalRoot.selectedText.length > 0 ? qsTr("Editar seleção com IA") : qsTr("Gerar conteúdo com IA")
+                    text: aiModalRoot.blockScoped ? aiModalRoot.blockMetadata("blockTitle")
+                        : aiModalRoot.selectedText.length > 0 ? qsTr("Editar seleção com IA") : qsTr("Gerar conteúdo com IA")
                     color: "#fffffe"
-                    font.pixelSize: 15
+                    font.pixelSize: aiModalRoot.blockScoped ? 12 : 15
                     font.bold: true
                     Layout.fillWidth: true
+                }
+                Text {
+                    visible: aiModalRoot.blockMetadata("blockSubtitle").length > 0
+                    text: aiModalRoot.blockMetadata("blockSubtitle")
+                    color: "#a7a9be"
+                    font.pixelSize: 10
+                    elide: Text.ElideRight
+                    Layout.maximumWidth: 90
+                }
+                ToolButton {
+                    id: clearChatButton
+                    visible: aiModalRoot.blockScoped && aiModalRoot.chatHistory.length > 0
+                    Layout.preferredWidth: 26
+                    Layout.preferredHeight: 26
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Limpar conversa")
+                    onClicked: aiModalRoot.clearBlockConversation()
+                    contentItem: AppIcon { anchors.centerIn: parent; name: "trash"; color: clearChatButton.hovered ? "#fb7185" : "#94a1b2"; width: 13; height: 13 }
                 }
                 ToolButton {
                     id: closeButton
@@ -184,6 +275,7 @@ Item {
             }
 
             Flow {
+                visible: !aiModalRoot.blockScoped
                 Layout.fillWidth: true
                 spacing: 6
                 Repeater {
@@ -195,12 +287,13 @@ Item {
                         { label: "Expandir", prompt: "Expanda e aprofunde este tópico com mais detalhes." }
                     ]
                     delegate: Button {
+                        id: quickPromptButton
                         required property var modelData
                         Layout.preferredHeight: 26
                         padding: 8
                         onClicked: aiModalRoot.runPrompt(modelData.prompt)
-                        background: Rectangle { radius: 13; color: parent.hovered ? "#288b5cf6" : "#1f1e2e"; border.color: "#2e2e38" }
-                        contentItem: Text { text: modelData.label; color: "#ddd6fe"; font.pixelSize: 11 }
+                        background: Rectangle { radius: 13; color: quickPromptButton.hovered ? "#288b5cf6" : "#1f1e2e"; border.color: "#2e2e38" }
+                        contentItem: Text { text: quickPromptButton.modelData.label; color: "#ddd6fe"; font.pixelSize: 11 }
                     }
                 }
             }
@@ -211,7 +304,8 @@ Item {
                 TextField {
                     id: customInput
                     Layout.fillWidth: true
-                    placeholderText: qsTr("Peça qualquer coisa à IA...")
+                    placeholderText: aiModalRoot.blockScoped
+                        ? qsTr("Instrução para a IA neste bloco...") : qsTr("Peça qualquer coisa à IA...")
                     placeholderTextColor: "#52525b"
                     color: "#fffffe"
                     font.pixelSize: 13
@@ -237,10 +331,34 @@ Item {
                 Layout.fillWidth: true
             }
 
+            ColumnLayout {
+                visible: aiModalRoot.blockScoped && aiModalRoot.chatHistory.length === 0 && !aiModalRoot.isGenerating
+                Layout.fillWidth: true
+                Layout.preferredHeight: 140
+                spacing: 8
+                AppIcon { Layout.alignment: Qt.AlignHCenter; Layout.preferredWidth: 22; Layout.preferredHeight: 22; name: "sparkles"; color: "#8b5cf6"; opacity: 0.4 }
+                Text {
+                    Layout.fillWidth: true
+                    text: qsTr("Como posso ajudar com este bloco?")
+                    color: "#d4d4d8"
+                    font.pixelSize: 12
+                    font.weight: Font.Medium
+                    horizontalAlignment: Text.AlignHCenter
+                }
+                Text {
+                    Layout.fillWidth: true
+                    text: qsTr("O escopo de edição está restrito a este elemento.")
+                    color: "#71717a"
+                    font.pixelSize: 11
+                    horizontalAlignment: Text.AlignHCenter
+                    wrapMode: Text.Wrap
+                }
+            }
+
             Rectangle {
                 visible: aiModalRoot.aiReply.length > 0
                 Layout.fillWidth: true
-                Layout.preferredHeight: 190
+                Layout.preferredHeight: aiModalRoot.blockScoped ? 210 : 190
                 radius: 8
                 color: "#0f0e17"
                 border.color: "#24ffffff"
@@ -250,8 +368,13 @@ Item {
                     clip: true
                     Text {
                         width: parent.width
-                        text: aiModalRoot.previewDiffHtml.length > 0 ? aiModalRoot.previewDiffHtml : aiModalRoot.aiReply
-                        textFormat: aiModalRoot.previewDiffHtml.length > 0 ? Text.RichText : Text.PlainText
+                        text: aiModalRoot.showDiff && aiModalRoot.previewDiffHtml.length > 0
+                            ? aiModalRoot.previewDiffHtml
+                            : aiModalRoot.chatHistory.map(function(message) {
+                                return (message.role === "user" ? qsTr("Você") : "IA") + ": " + String(message.content || "")
+                            }).join("\n\n")
+                        textFormat: aiModalRoot.showDiff && aiModalRoot.previewDiffHtml.length > 0
+                            ? Text.RichText : Text.PlainText
                         color: "#e2e8f0"
                         font.pixelSize: 12
                         wrapMode: Text.WordWrap
@@ -265,6 +388,44 @@ Item {
                 spacing: 8
                 Item { Layout.fillWidth: true }
                 Button {
+                    visible: aiModalRoot.blockScoped && aiModalRoot.previewDiffHtml.length > 0
+                    Layout.preferredHeight: 32
+                    padding: 8
+                    onClicked: aiModalRoot.showDiff = !aiModalRoot.showDiff
+                    background: Rectangle { radius: 8; color: aiModalRoot.showDiff ? "#33f59e0b" : "#1affffff" }
+                    contentItem: Text {
+                        text: aiModalRoot.showDiff ? qsTr("Ver resposta") : qsTr("Ver diferenças")
+                        color: aiModalRoot.showDiff ? "#fcd34d" : "#a7a9be"
+                        font.pixelSize: 10
+                    }
+                }
+                Button {
+                    visible: aiModalRoot.blockScoped
+                    Layout.preferredHeight: 32
+                    padding: 8
+                    onClicked: aiModalRoot.copyBlockResponse()
+                    background: Rectangle { radius: 8; color: "#1affffff" }
+                    contentItem: Text {
+                        text: aiModalRoot.copiedMessageIndex === aiModalRoot.chatHistory.length - 1
+                            ? qsTr("Copiado") : qsTr("Copiar")
+                        color: "#a7a9be"
+                        font.pixelSize: 10
+                    }
+                }
+                Button {
+                    visible: aiModalRoot.hasBlockInsertAction()
+                    Layout.preferredHeight: 32
+                    padding: 8
+                    enabled: !aiModalRoot.isGenerating
+                    onClicked: {
+                        if (aiModalRoot.blockApplyHandler.insertContent.call(null, aiModalRoot.aiReply))
+                            aiModalRoot.closeModal()
+                        else aiModalRoot.errorText = qsTr("Não foi possível inserir conteúdo neste bloco.")
+                    }
+                    background: Rectangle { radius: 8; color: "#1affffff" }
+                    contentItem: Text { text: qsTr("Inserir"); color: "#a7a9be"; font.pixelSize: 10 }
+                }
+                Button {
                     Layout.preferredHeight: 32
                     padding: 10
                     enabled: !aiModalRoot.isGenerating
@@ -272,7 +433,8 @@ Item {
                     background: Rectangle { radius: 8; color: "#7c3aed" }
                     contentItem: Text {
                         text: typeof aiModalRoot.blockApplyHandler === "function"
-                            ? qsTr("Aplicar no bloco")
+                            ? (aiModalRoot.blockMetadata("blockType") === "codeBlock"
+                                ? qsTr("Substituir Código") : qsTr("Substituir no Bloco"))
                             : aiModalRoot.previewHtml.length > 0 ? qsTr("Aplicar alterações") : qsTr("Inserir na nota")
                         color: "#ffffff"
                         font.pixelSize: 12

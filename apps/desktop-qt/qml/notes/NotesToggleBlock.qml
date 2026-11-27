@@ -33,6 +33,7 @@ Rectangle {
     property bool showColorPicker: false
     property bool isSyncingBlock: false
     property bool isEmittingUpdate: false
+    property alias aiButtonItem: aiPromptButton
 
     readonly property bool hasCustomColor: accentColor.length > 0 && accentColor !== "default"
     readonly property string resolvedLeftBarColor: hasCustomColor ? accentColor : "#33ffffff"
@@ -292,6 +293,7 @@ Rectangle {
                     spacing: 2
 
                     ToolButton {
+                        id: aiPromptButton
                         Layout.preferredWidth: 22
                         Layout.preferredHeight: 22
                         focusPolicy: Qt.NoFocus

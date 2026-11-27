@@ -11,6 +11,42 @@ function escapeHtmlText(value) {
         .replace(/>/g, "&gt;")
 }
 
+function escapeHtmlAttribute(value) {
+    return escapeHtmlText(value).replace(/"/g, "&quot;")
+}
+
+function safeLinkTarget(value) {
+    var href = String(value || "").trim()
+    return /^(https?:\/\/|mailto:|synapse-page:\/)/i.test(href) ? href : ""
+}
+
+function sanitizeRichHtml(value) {
+    var content = String(value || "").replace(/<!--[\s\S]*?-->/g, "")
+    content = content.replace(/<(script|style|iframe|object|embed|svg|math)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, "")
+    var safeTags = {
+        p: true, br: true, strong: true, b: true, em: true, i: true, u: true, s: true, del: true,
+        ul: true, ol: true, li: true, blockquote: true, pre: true, code: true,
+        h1: true, h2: true, h3: true, h4: true, h5: true, h6: true, hr: true,
+        table: true, thead: true, tbody: true, tfoot: true, tr: true, th: true, td: true, a: true
+    }
+    return content.replace(/<\/?([a-z][a-z0-9]*)\b([^>]*)>/gi, function(tag, rawName, attributes) {
+        var name = String(rawName).toLowerCase()
+        if (!safeTags[name]) return ""
+        if (/^<\//.test(tag)) return "</" + name + ">"
+        if (name === "br" || name === "hr") return "<" + name + "/>"
+        if (name === "code") {
+            var language = /class\s*=\s*["'][^"']*language-([a-zA-Z0-9_+.-]+)[^"']*["']/i.exec(attributes)
+            return "<code" + (language ? " class=\"language-" + language[1] + "\"" : "") + ">"
+        }
+        if (name === "a") {
+            var href = /href\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i.exec(attributes)
+            var target = href ? safeLinkTarget(href[1] || href[2] || href[3]) : ""
+            return "<a" + (target ? " href=\"" + escapeHtmlAttribute(target) + "\"" : "") + ">"
+        }
+        return "<" + name + ">"
+    })
+}
+
 function stripProposalFence(value) {
     var content = String(value || "").trim()
     var outerFence = /(?:^|\n)(`{4,}|~{4,})(?:markdown|md)?\s*\n([\s\S]*?)\n\1(?:\n|$)/i.exec(content)
@@ -132,8 +168,9 @@ function applySearchReplace(source, proposal) {
 
 function richContentHtml(value) {
     var content = stripProposalFence(value)
-    if (/<(?:p|div|ul|ol|li|pre|blockquote|h[1-6]|hr|table|img)\b/i.test(content)) return content
-    return markdownToHtml(content)
+    if (/<(?:p|div|ul|ol|li|pre|blockquote|h[1-6]|hr|table|img)\b/i.test(content))
+        return sanitizeRichHtml(content)
+    return sanitizeRichHtml(markdownToHtml(content))
 }
 
 function decodeCodeHtml(value) {
@@ -150,7 +187,7 @@ function decodeCodeHtml(value) {
 
 function codeProposal(value) {
     var content = String(value || "").trim()
-    var fence = /^```([a-zA-Z0-9_+.-]+)?\s*\n([\s\S]*?)\n?```\s*$/.exec(content)
+    var fence = /```([a-zA-Z0-9_+.-]+)?\s*\n([\s\S]*?)\n?```/.exec(content)
     if (fence) return { code: fence[2].replace(/\n+$/, ""), language: fence[1] || "" }
 
     var htmlCode = /<pre\b[^>]*>\s*<code\b([^>]*)>([\s\S]*?)<\/code>\s*<\/pre>/i.exec(content)

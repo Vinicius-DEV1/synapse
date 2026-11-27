@@ -21,6 +21,7 @@ Rectangle {
     property bool isSyncing: false
     property bool readyForUserEdits: false
     property string lastSyncedPlain: ""
+    property alias aiButtonItem: aiPromptButton
 
     Colors { id: colorsPalette }
 
@@ -150,6 +151,7 @@ Rectangle {
             }
 
             ToolButton {
+                id: aiPromptButton
                 Layout.preferredWidth: 22; Layout.preferredHeight: 22
                 focusPolicy: Qt.NoFocus
                 ToolTip.visible: hovered; ToolTip.text: qsTr("Melhorar citação com IA")

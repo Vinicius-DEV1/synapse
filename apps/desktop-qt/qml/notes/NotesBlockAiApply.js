@@ -12,10 +12,37 @@ function createHandler(editor, index) {
     var sourcePageId = editor.pageId
     var sourceBlockId = String(editor.blocks[index].id)
     var sourceState = JSON.stringify(editor.blocks[index])
-    return function(result, isCanonicalBlockHtml) {
+    var block = editor.blocks[index]
+    var row = editor.aiBlockRepeater.itemAt(index)
+    var widget = row && row.router ? row.router.item : null
+    var anchorItem = widget && typeof widget.aiButtonItem !== "undefined" ? widget.aiButtonItem : null
+    var anchorPoint = anchorItem ? anchorItem.mapToItem(null, anchorItem.width / 2, anchorItem.height) : null
+    var applyHandler = function(result, isCanonicalBlockHtml) {
         return editor.applyAiBlockResult(
             sourcePageId, sourceBlockId, sourceState, String(result || ""), Boolean(isCanonicalBlockHtml))
     }
+    applyHandler.sessionId = sourcePageId + "::" + sourceBlockId
+    applyHandler.blockType = String(block.blockType || "")
+    applyHandler.blockTitle = block.blockType === "codeBlock" ? "IA • Bloco de Código"
+        : block.blockType === "blockquote" ? "IA • Callout"
+        : block.blockType === "blockquoteToggle" ? "IA • Toggle Callout" : "IA • Toggle"
+    applyHandler.blockSubtitle = String((block.attrs && (block.attrs["data-title"] || block.attrs.title)) || "")
+    applyHandler.sourceContent = String(block.attrs && block.attrs.code !== undefined
+        ? block.attrs.code : block.innerHtml || block.html || "")
+    applyHandler.anchorX = anchorPoint ? anchorPoint.x : -1
+    applyHandler.anchorY = anchorPoint ? anchorPoint.y + 6 : -1
+    applyHandler.insertContent = function(content) {
+        var current = String(block.attrs && block.attrs.code !== undefined ? block.attrs.code : block.innerHtml || "")
+        var added = String(content || "")
+        if (block.blockType === "codeBlock") {
+            added = BlockAiOperations.codeProposal(added).code
+            return editor.applyAiBlockResult(
+                sourcePageId, sourceBlockId, sourceState, current + (current ? "\n" : "") + added, false)
+        }
+        var body = String(block.innerHtml || block.html || "") + BlockAiOperations.markdownToHtml(added)
+        return editor.applyAiBlockResult(sourcePageId, sourceBlockId, sourceState, body, false)
+    }
+    return applyHandler
 }
 
 function applyResult(editor, sourcePageId, sourceBlockId, sourceState, result, isCanonicalBlockHtml) {
