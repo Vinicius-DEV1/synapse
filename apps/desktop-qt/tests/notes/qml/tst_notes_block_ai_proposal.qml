@@ -1,6 +1,7 @@
 import QtQuick
 import QtTest
 import "../../../qml/notes/NotesBlockAiProposal.js" as BlockAiProposal
+import "NotesCoreSearchReplaceFixture.js" as CoreSearchReplaceFixture
 
 TestCase {
     name: "NotesBlockAiProposal"
@@ -8,7 +9,13 @@ TestCase {
     function test_proposalDetailsExposeTargetAwareSurgicalDiff() {
         var block = { id: "code-proposal", blockType: "codeBlock", attrs: { code: "old()", language: "js" }, html: "", innerHtml: "old()" }
         var reply = "<<<<<<< SEARCH\nold()\n=======\nnew()\n>>>>>>>"
-        var details = BlockAiProposal.details(block, reply)
+        var controller = CoreSearchReplaceFixture.controllerWithResults([
+            CoreSearchReplaceFixture.success("new()"),
+            CoreSearchReplaceFixture.success("new()"),
+            CoreSearchReplaceFixture.missing(block.attrs.code),
+            CoreSearchReplaceFixture.missing(block.attrs.code)
+        ])
+        var details = BlockAiProposal.details(block, reply, controller)
         verify(details.valid)
         verify(details.isSearchReplace)
         compare(details.searchReplaceCount, 1)
@@ -17,7 +24,7 @@ TestCase {
         compare(details.replacementText, "new()")
         verify(details.diffAvailable)
 
-        var stale = BlockAiProposal.details(block, "<<<<<<< SEARCH\nmissing()\n=======\nnew()\n>>>>>>>")
+        var stale = BlockAiProposal.details(block, "<<<<<<< SEARCH\nmissing()\n=======\nnew()\n>>>>>>>", controller)
         verify(!stale.valid)
     }
 

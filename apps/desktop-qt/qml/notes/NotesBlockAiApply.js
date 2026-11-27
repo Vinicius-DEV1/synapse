@@ -72,7 +72,7 @@ function applyResult(editor, sourcePageId, sourceBlockId, sourceState, result, i
             attrs: Object.assign({}, sourceBlock.attrs || ({}), parsed[0].attrs || ({}))
         })
     } else {
-        replacement = BlockAiOperations.replacementForBlock(sourceBlock, result)
+        replacement = BlockAiOperations.replacementForBlock(sourceBlock, result, editor.controller)
     }
     if (!replacement || replacement.blockType !== sourceBlock.blockType) return false
 

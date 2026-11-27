@@ -9,21 +9,19 @@ function stripProposalFence(value) { return BlockAiMarkdown.stripProposalFence(v
 function markdownToHtml(value) { return BlockAiMarkdown.markdownToHtml(value) }
 function richContentHtml(value) { return BlockAiMarkdown.richContentHtml(value) }
 
-function applySearchReplace(source, proposal) {
-    var blocks = []
-    var marker = /<<<<<<< SEARCH\s*\n([\s\S]*?)\n=======\s*\n([\s\S]*?)\n>>>>>>>/g
-    var match
-    while ((match = marker.exec(String(proposal || ""))) !== null)
-        blocks.push({ search: match[1], replace: match[2] })
-    if (blocks.length === 0) return { found: false, success: false, result: "" }
-
-    var result = String(source || "")
-    for (var i = 0; i < blocks.length; ++i) {
-        var position = result.indexOf(blocks[i].search)
-        if (position < 0) return { found: true, success: false, result: "" }
-        result = result.slice(0, position) + blocks[i].replace + result.slice(position + blocks[i].search.length)
+function applySearchReplace(source, proposal, controller) {
+    if (!controller || typeof controller.applyNoteSearchReplace !== "function")
+        return { found: false, success: false, result: "", error: "Core search/replace is unavailable." }
+    var result = controller.applyNoteSearchReplace(String(source || ""), String(proposal || ""))
+    if (!result || typeof result.success !== "boolean")
+        return { found: false, success: false, result: "", error: "Core returned an invalid search/replace result." }
+    var replacedCount = Number(result.replacedCount || 0)
+    return {
+        found: replacedCount > 0 || !result.success,
+        success: result.success,
+        result: String(result.result || ""),
+        error: String(result.error || "")
     }
-    return { found: true, success: true, result: result }
 }
 
 function decodeCodeHtml(value) {
@@ -51,12 +49,12 @@ function codeProposal(value) {
     return { code: content, language: "" }
 }
 
-function replacementForBlock(block, reply) {
+function replacementForBlock(block, reply, controller) {
     if (!block || !block.id) return null
     var next = cloneBlock(block)
     var content = stripProposalFence(reply)
     if (block.blockType === "codeBlock") {
-        var codeChange = applySearchReplace(String(block.attrs.code || block.innerHtml || ""), content)
+        var codeChange = applySearchReplace(String(block.attrs.code || block.innerHtml || ""), content, controller)
         var proposal = codeProposal(content)
         next.attrs.code = codeChange.found ? (codeChange.success ? codeChange.result : "") : proposal.code
         if (codeChange.found && !codeChange.success) return null
@@ -67,7 +65,7 @@ function replacementForBlock(block, reply) {
 
     var body = content
     var rawBody = String(block.innerHtml || block.html || "").replace(/<[^>]*>/g, "")
-    var bodyChange = applySearchReplace(rawBody, body)
+    var bodyChange = applySearchReplace(rawBody, body, controller)
     if (bodyChange.found) {
         if (!bodyChange.success) return null
         body = bodyChange.result

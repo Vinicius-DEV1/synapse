@@ -23,7 +23,7 @@ function plainTextFromHtml(value) {
         .trim()
 }
 
-function details(block, reply) {
+function details(block, reply, controller) {
     if (!block || !block.id) return { valid: false, cleanText: "", searchReplaceCount: 0, diffAvailable: false }
     var raw = String(reply || "")
     var type = String(block.blockType || "")
@@ -31,7 +31,7 @@ function details(block, reply) {
     var sourceText = codeBlock
         ? String(block.attrs && block.attrs.code !== undefined ? block.attrs.code : block.innerHtml || "")
         : plainTextFromHtml(block.innerHtml || block.html || "")
-    var replacement = BlockAiOperations.replacementForBlock(block, raw)
+    var replacement = BlockAiOperations.replacementForBlock(block, raw, controller)
     var replacementText = !replacement ? "" : (codeBlock
         ? String(replacement.attrs.code || "")
         : plainTextFromHtml(replacement.innerHtml || replacement.html || ""))
@@ -39,12 +39,12 @@ function details(block, reply) {
     var cleanText = raw
     var title = ""
     if (codeBlock) {
-        var surgical = BlockAiOperations.applySearchReplace(sourceText, raw)
+        var surgical = BlockAiOperations.applySearchReplace(sourceText, raw, controller)
         cleanText = surgical.found ? raw : BlockAiOperations.codeProposal(raw).code
     } else {
         var titleMatch = /^(?:T\u00edtulo|Titulo|Title):\s*(.+)$/im.exec(raw)
         if (titleMatch) title = titleMatch[1].trim().replace(/^\*+|\*+$/g, "")
-        var surgical = BlockAiOperations.applySearchReplace(sourceText, raw)
+        var surgical = BlockAiOperations.applySearchReplace(sourceText, raw, controller)
         cleanText = surgical.found ? raw : BlockAiOperations.stripProposalFence(raw)
         if (title && !surgical.found)
             cleanText = cleanText.replace(/^(?:T\u00edtulo|Titulo|Title):\s*.+\n?/im, "").trim()

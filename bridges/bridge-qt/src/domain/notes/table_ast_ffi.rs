@@ -1,10 +1,17 @@
 //! FFI bindings for Block AST parsing/serialization, diffing, CRDT hydration, and table schemas.
 
-use std::ffi::CString;
+use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int};
 use synapse_core::domain::notes;
 
 use super::super::helpers::{json_to_c_char, to_opt_str};
+
+unsafe fn to_raw_str<'a>(ptr: *const c_char) -> Option<&'a str> {
+    if ptr.is_null() {
+        return None;
+    }
+    CStr::from_ptr(ptr).to_str().ok()
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn synapse_notes_parse_blocks(html: *const c_char) -> *mut c_char {
@@ -33,8 +40,10 @@ pub unsafe extern "C" fn synapse_notes_apply_search_replace(
     original: *const c_char,
     ai_response: *const c_char,
 ) -> *mut c_char {
-    let orig = to_opt_str(original).unwrap_or("");
-    let ai = to_opt_str(ai_response).unwrap_or("");
+    // Search/replace patches are whitespace-sensitive; unlike identifiers and filters,
+    // their source text must not pass through the trimming FFI helper.
+    let orig = to_raw_str(original).unwrap_or("");
+    let ai = to_raw_str(ai_response).unwrap_or("");
     let blocks = notes::parse_search_replace_blocks(ai);
     let result = notes::apply_search_replace(orig, &blocks);
     json_to_c_char(&result)

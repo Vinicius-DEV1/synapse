@@ -1,6 +1,7 @@
 import QtQuick
 import QtTest
 import "../../../qml/notes/NotesBlockAiOperations.js" as BlockAiOperations
+import "NotesCoreSearchReplaceFixture.js" as CoreSearchReplaceFixture
 
 TestCase {
     name: "NotesBlockAiOperations"
@@ -73,12 +74,16 @@ TestCase {
 
     function test_searchReplaceIsBoundToTheSourceBlockContent() {
         var block = { id: "code-3", blockType: "codeBlock", attrs: { code: "const old = 1;", language: "js" }, html: "", innerHtml: "const old = 1;" }
+        var controller = CoreSearchReplaceFixture.controllerWithResults([
+            CoreSearchReplaceFixture.success("const next = 2;"),
+            CoreSearchReplaceFixture.missing(block.attrs.code)
+        ])
         var result = BlockAiOperations.replacementForBlock(
-            block, "<<<<<<< SEARCH\nconst old = 1;\n=======\nconst next = 2;\n>>>>>>>")
+            block, "<<<<<<< SEARCH\nconst old = 1;\n=======\nconst next = 2;\n>>>>>>>", controller)
         compare(result.attrs.code, "const next = 2;")
         compare(block.attrs.code, "const old = 1;")
         compare(BlockAiOperations.replacementForBlock(
-            block, "<<<<<<< SEARCH\nmissing\n=======\nreplacement\n>>>>>>>") , null)
+            block, "<<<<<<< SEARCH\nmissing\n=======\nreplacement\n>>>>>>>", controller), null)
     }
 
     function test_generatedRichHtmlDropsActiveContentAndUnsafeAttributes() {

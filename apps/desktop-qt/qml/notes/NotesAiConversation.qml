@@ -41,7 +41,7 @@ Item {
     function proposalForMessage(message) {
         if (!blockScoped || !sourceBlockState || !message || message.role !== "assistant") return null
         try {
-            return BlockAiProposal.details(JSON.parse(sourceBlockState), String(message.content || ""))
+            return BlockAiProposal.details(JSON.parse(sourceBlockState), String(message.content || ""), controller)
         } catch (error) {
             console.error("[Notes:BlockAI] Could not analyze a message proposal:", error)
             return null

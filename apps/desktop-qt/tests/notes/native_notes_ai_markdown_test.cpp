@@ -24,6 +24,40 @@ private:
     }
 
 private slots:
+    void searchReplaceUsesCoreExactCrlfAndTrimmedFallbacks() {
+        SynapseDataController controller(nullptr, false);
+
+        QVariantMap result = controller.applyNoteSearchReplace(
+            QStringLiteral("const old = 1;"),
+            QStringLiteral("<<<<<<< SEARCH\nconst old = 1;\n=======\nconst next = 2;\n>>>>>>>"));
+        QVERIFY(result.value(QStringLiteral("success")).toBool());
+        QCOMPARE(result.value(QStringLiteral("replacedCount")).toInt(), 1);
+        QCOMPARE(result.value(QStringLiteral("result")).toString(), QStringLiteral("const next = 2;"));
+
+        result = controller.applyNoteSearchReplace(
+            QStringLiteral("first\r\nconst old = 1;\r\nlast"),
+            QStringLiteral("<<<<<<< SEARCH\nconst old = 1;\nlast\n=======\nconst next = 2;\nlast\n>>>>>>>"));
+        QVERIFY(result.value(QStringLiteral("success")).toBool());
+        QCOMPARE(result.value(QStringLiteral("result")).toString(), QStringLiteral("first\nconst next = 2;\nlast"));
+
+        result = controller.applyNoteSearchReplace(
+            QStringLiteral("  const value = 1;\n"),
+            QStringLiteral("<<<<<<< SEARCH\n const value = 1; \n=======\nconst value = 2;\n>>>>>>>"));
+        QVERIFY(result.value(QStringLiteral("success")).toBool());
+        QCOMPARE(result.value(QStringLiteral("result")).toString(), QStringLiteral("  const value = 2;\n"));
+
+        result = controller.applyNoteSearchReplace(
+            QStringLiteral("const old = 1;"),
+            QStringLiteral("<<<<<<< SEARCH\nmissing\n=======\nreplacement\n>>>>>>>"));
+        QVERIFY(!result.value(QStringLiteral("success")).toBool());
+        QCOMPARE(result.value(QStringLiteral("result")).toString(), QStringLiteral("const old = 1;"));
+
+        result = controller.applyNoteSearchReplace(QStringLiteral("unchanged"), QStringLiteral("No patch"));
+        QVERIFY(result.value(QStringLiteral("success")).toBool());
+        QCOMPARE(result.value(QStringLiteral("replacedCount")).toInt(), 0);
+        QCOMPARE(result.value(QStringLiteral("result")).toString(), QStringLiteral("unchanged"));
+    }
+
     void convertsInlineGfmAndKeepsUnsafeTargetsInactive() {
         QQmlEngine engine;
         QScopedPointer<QObject> harness(createHarness(engine));
