@@ -109,7 +109,7 @@ Rectangle {
                     visible: historyRoot.selectedIndex > 0 && historyRoot.selectedEntry() !== null
                     onClicked: {
                         var entry = historyRoot.selectedEntry()
-                        if (entry && entry.content) {
+                        if (entry && typeof entry.content === "string") {
                             historyRoot.restoreRevisionRequested(entry.content)
                             historyRoot.closeRequested()
                         }

@@ -329,6 +329,17 @@ Rectangle {
         saveStatus = "error"; return false
     }
     function scheduleAutoSave() { isDirty = true; saveStatus = "dirty"; autoSaveTimer.restart() }
+
+    function restoreHistoryRevision(content) {
+        if (typeof content !== "string") return false
+        activeContent = content
+        wordCount = Actions.countWords(content)
+        isDirty = true
+        var saved = saveActiveNote()
+        isHistoryOpen = false
+        return saved
+    }
+
     function createNewRootNote() { createNewSubNote("") }
     function duplicateCurrentPage() {
         var newId = Actions.duplicatePageWithController(controller, selectedPageId, activeTitle, activeContent, activeIcon, activeDescription, activeCoverImage)
@@ -556,12 +567,7 @@ Rectangle {
         }
         onSelectPageRequested: function(pid) { pageViewRoot.selectPage(pid) }
         onImportedPage: function(newId) { pageViewRoot.refreshPageTree(); pageViewRoot.selectPage(newId) }
-        onRestoreRevisionRequested: function(content) {
-            pageViewRoot.activeContent = content
-            pageViewRoot.wordCount = Actions.countWords(content)
-            pageViewRoot.saveActiveNote()
-            pageViewRoot.isHistoryOpen = false
-        }
+        onRestoreRevisionRequested: function(content) { pageViewRoot.restoreHistoryRevision(content) }
         onApplyAiHtmlRequested: function(html) { editorSurface.applyAiResult(html) }
         onInsertAiTextRequested: function(txt) { editorSurface.applyAiResult("<p>" + txt + "</p>") }
         onInsertWidgetRequested: function(html) { editorSurface.insertWidgetHtmlAtPending(html) }
