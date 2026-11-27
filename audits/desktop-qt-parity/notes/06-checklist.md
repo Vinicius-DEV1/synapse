@@ -261,6 +261,8 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 - [x] Center the no-history icon and message in the revision rail instead of placing them after a fixed footer spacer. The production modal harness clears a populated history and verifies the empty state is centered in the live list area (QT-NOTES-091).
 - [x] Apply React's revision-card 14 px all-side padding, 12 px corner radius, 12/11 px title/date sizes, selected date tint, and 5% hover tint. The production modal test verifies the 14 px insets and type scale; exact pixels remain subject to viewport capture (QT-NOTES-091).
 - [ ] Compare sidebar breakpoints, exact card height/radius/selected shadow, header control fit, empty/error rendering, scrolling, high-DPI text and same-viewport screenshots against React (QT-NOTES-091).
+- [x] Make each history revision a keyboard reachable Qt button with an accessible role/name, visible focus border, and Enter/Return/Space selection. A visible-window production test verifies the accessible Button role and revision/date name, Tab traversal, Return and Space selection, and the selected-row focus indicator (QT-NOTES-092).
+- [ ] Verify screen-reader announcements, Escape while focus is on a revision, focus restoration after closing, actual application keyboard traversal, and matched-viewport focus appearance (QT-NOTES-092).
 - [ ] Verify optimistic conflict detection and recovery without overwriting another client’s newer content.
 - [ ] Verify editor backup/recovery after restart and stale backup invalidation after a successful save.
 - [ ] Verify page switching, tab switching, window close and app shutdown flush all active blocks.
