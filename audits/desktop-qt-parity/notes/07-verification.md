@@ -1144,3 +1144,17 @@ The same focused `page-reference-search` command was rerun after removing the sw
 | `/usr/lib/qt6/bin/qmllint -I apps/desktop-qt/qml apps/desktop-qt/qml/notes/NotesBlockAiMarkdown.js apps/desktop-qt/qml/notes/NotesBlockAiOperations.js apps/desktop-qt/tests/notes/qml/NotesBlockAiMarkdownHarness.qml` | Passed with no diagnostics | Focused lint for the extracted converter, its operations adapter and test harness. |
 | `git diff --check` | Passed | No whitespace errors. |
 | Matched-viewport Markdown/editor visual comparison and sanitizer security review | Not run | The Qt allow-list is regex-based and remains distinct from React DOMPurify. Rendered images, numbered task-state retention, nested structures, reference links and editor-schema edge cases remain open under QT-NOTES-110. |
+
+
+### Notes block-AI search/replace Core delegation (2026-11-27)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `cargo build -p synapse-bridge-qt --release` | Passed | Rebuilt the release bridge selected by the Desktop Qt CMake configuration. |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop-tests -j4` | Passed | Relinked the native test binary against the rebuilt release bridge. |
+| `QT_QPA_PLATFORM=offscreen apps/desktop-qt/build/synapse-desktop-tests --suite=notes-ai-markdown` | Passed: 3 behavior rows, 0 failures (5 QtTest rows including setup/cleanup) | Calls the real `SynapseDataController.applyNoteSearchReplace` and verifies exact, CRLF, trimmed-edge whitespace preservation, missing-patch rejection and no-patch passthrough, alongside the existing Markdown/Core serialization tests. |
+| `QT_QPA_PLATFORM=offscreen /usr/lib/qt6/bin/qmltestrunner -input apps/desktop-qt/tests/notes/qml/tst_notes_block_ai_operations.qml` | Passed: 9 behavior rows (11 QtTest rows including setup/cleanup) | QML operation tests use a controller response stub; Core's matching behavior is separately exercised through the native controller test. |
+| `QT_QPA_PLATFORM=offscreen /usr/lib/qt6/bin/qmltestrunner -input apps/desktop-qt/tests/notes/qml/tst_notes_block_ai_proposal.qml` | Passed: 2 behavior rows (4 QtTest rows including setup/cleanup) | Exercises valid/stale source-aware proposal state with mocked controller results. |
+| Focused `qmllint` on `NotesAiConversation.qml`, `NotesBlockAiApply.js`, `NotesBlockAiOperations.js`, and `NotesBlockAiProposal.js` | Passed with no diagnostics | QML and imported JS syntax checks only; does not establish visual parity. |
+| `rustfmt --check --edition 2021 bridges/bridge-qt/src/domain/notes/table_ast_ffi.rs` and `git diff --check` | Passed | Checks the changed bridge file and patch whitespace. A broader crate-level `cargo fmt --check` surfaced existing formatting differences in unrelated files and was not used to reformat them. |
+| React/Core parser differential for flexible marker whitespace, malformed/truncated blocks, multiple blocks and replacement-string special tokens | Not run | Keep this parsing parity item open; Qt now uses the Core parser and must not add a second parser. Compare against `apps/web-react/src/components/editor-extensions/hooks/blockDiffEngine.ts` before claiming parser equivalence. |
