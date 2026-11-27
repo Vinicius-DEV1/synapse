@@ -918,6 +918,17 @@ Findings are based on source inspection of the active worktree. Severity is base
 - **Acceptance:** Production modal test checks Button role/name, 34×34 target and 18×18 icon. Compare hover rendering and icon stroke at a matched viewport.
 - **Fix status:** The close button now uses the shared 18 px icon, 34×34 target, 8 px corner radius, `#1affffff` hover, `Fechar (Esc)` tooltip and `Fechar histórico de edições` accessible name. A visible-window test verifies role/name and dimensions. Exact hover/stroke comparison remains open; see [07-verification.md](07-verification.md).
 
+
+## QT-NOTES-095: Native history actions overflow the narrow header
+
+- **Severity:** Medium; the Qt-only Diff and Restore buttons competed with the title and close control, pushing the close hit target outside the right margin at a 360 px viewport.
+- **Evidence:** The production modal geometry test failed before the fix because the close control's right edge exceeded the React 20 px narrow-screen margin. React's header contains only its title and close button.
+- **Reproduction:** Open history in a 360 px wide window and check the right edge of the close control. Before the fix, the extra Qt actions expanded the header row beyond its available width.
+- **Root cause:** Desktop-only controls remained inline at every width, leaving no responsive way to retain them alongside the React header controls.
+- **Required fix:** Keep Diff and Restore inline at desktop widths; below 640 px, move them into a keyboard accessible overflow menu and retain their availability/enabled states. Keep the close target within the same right margin as React.
+- **Acceptance:** A production `QQuickWindow` test at 360 px verifies the close right edge, overflow button accessibility, menu presence, Diff availability and Restore's disabled state for the current revision. Verify 639/640 px breakpoint behavior, old-revision Restore activation and same-viewport appearance in the running app.
+- **Fix status:** Qt now moves Diff and Restore into a native `Menu` below 640 px. The visible-window test verifies the 360 px close margin, accessible overflow name, menu actions and their current-revision enabled state. The 639/640 px boundary, Restore activation from the menu and matched-viewport appearance remain open; see [07-verification.md](07-verification.md).
+
 ## Second-pass review
 
 Before closing any issue, inspect the full caller chain and the corresponding React flow again. Specifically re-check projection state during page switch and autosave; imported-file signal ordering and failure; UTF-16 offsets adjacent to entities, page-reference objects and inline widgets; normalizer allowlists and cross-client serialization; multi-table identity through every bridge method; nested column groups; adjacent object serialization and clipboard round-trip; help instructions against visible QML, and dynamic widget color alpha conversion for valid hex, named, and legacy palette values. Then complete [07-verification.md](07-verification.md).
