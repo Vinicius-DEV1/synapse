@@ -14,6 +14,7 @@
 #include <QtQuick/QQuickItem>
 #include <QtQuick/QQuickWindow>
 #include <QtTest/QtTest>
+#include <algorithm>
 
 class NotesPageHistoryController final : public QObject {
     Q_OBJECT
@@ -164,12 +165,24 @@ private slots:
         QTRY_VERIFY(dialog->property("height").toReal() > 0.0);
         QCOMPARE(dialog->property("activeEvents").toList().size(), 3);
         QCOMPARE(dialog->property("hasActiveEvents").toBool(), true);
+        QCOMPARE(dialog->property("deletionEventCount").toInt(), 2);
+        const QVariantList activeEvents = dialog->property("activeEvents").toList();
+        const auto inlineEvent = std::find_if(activeEvents.cbegin(), activeEvents.cend(), [](const QVariant &event) {
+            return event.toMap().value(QStringLiteral("id")).toString() == QStringLiteral("inline-event");
+        });
+        QVERIFY(inlineEvent != activeEvents.cend());
+        QCOMPARE(inlineEvent->toMap().value(QStringLiteral("willBeDeleted")).toBool(), false);
 
         QObject *warning = dialog->findChild<QObject *>(QStringLiteral("notesDeleteEventsWarning"));
         QVERIFY(warning);
+        QCOMPARE(warning->property("deletionCount").toInt(), 2);
+        QCOMPARE(warning->property("inlineOnlyCount").toInt(), 1);
+        QObject *warningDetail = warning->findChild<QObject *>(QStringLiteral("notesDeleteEventsDetail"));
+        QVERIFY(warningDetail);
+        QVERIFY(warningDetail->property("text").toString().contains(QStringLiteral("1 referência(s)")));
         QObject *confirmButton = dialog->findChild<QObject *>(QStringLiteral("notesDeleteConfirmButton"));
         QVERIFY(confirmButton);
-        QVERIFY(confirmButton->property("text").toString().contains(QStringLiteral("3 evento(s)")));
+        QVERIFY(confirmButton->property("text").toString().contains(QStringLiteral("2 evento(s)")));
         QObject *eventList = dialog->findChild<QObject *>(QStringLiteral("notesDeleteEventList"));
         QVERIFY(eventList);
         QCOMPARE(eventList->property("count").toInt(), 3);

@@ -7,6 +7,8 @@ Rectangle {
     objectName: "notesDeleteEventsWarning"
     property string pageName: ""
     property var events: []
+    property int deletionCount: 0
+    readonly property int inlineOnlyCount: Math.max(0, events.length - deletionCount)
 
     implicitHeight: warningContent.implicitHeight + 28
     radius: 12
@@ -30,7 +32,9 @@ Rectangle {
             }
             Text {
                 Layout.fillWidth: true
-                text: qsTr("Atenção: há %1 evento(s) não vencido(s) na Agenda!").arg(warningPanel.events.length)
+                text: warningPanel.deletionCount > 0
+                    ? qsTr("Atenção: %1 evento(s) serão removidos da Agenda.").arg(warningPanel.deletionCount)
+                    : qsTr("Atenção: há %1 evento(s) mencionados no conteúdo.").arg(warningPanel.inlineOnlyCount)
                 color: "#fcd34d"
                 font.pixelSize: 12
                 font.weight: Font.DemiBold
@@ -39,8 +43,13 @@ Rectangle {
         }
 
         Text {
+            objectName: "notesDeleteEventsDetail"
             Layout.fillWidth: true
-            text: qsTr("Os widgets de calendário em %1 (e subpáginas) têm prazos ativos. Ao excluir, eles também serão removidos da Agenda.").arg(warningPanel.pageName)
+            text: warningPanel.inlineOnlyCount > 0
+                ? warningPanel.deletionCount > 0
+                    ? qsTr("Eventos vinculados à página serão removidos. %1 referência(s) sem vínculo direto continuarão na Agenda após excluir %2.").arg(warningPanel.inlineOnlyCount).arg(warningPanel.pageName)
+                    : qsTr("%1 referência(s) sem vínculo direto continuarão na Agenda após excluir %2.").arg(warningPanel.inlineOnlyCount).arg(warningPanel.pageName)
+                : qsTr("Eventos vinculados à página e às subpáginas de %1 também serão removidos da Agenda.").arg(warningPanel.pageName)
             color: "#fde68a"
             opacity: 0.9
             font.pixelSize: 11

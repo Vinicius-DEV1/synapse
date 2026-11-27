@@ -17,10 +17,14 @@ Dialog {
     property var activeEvents: []
     property bool isDeleting: false
     readonly property bool hasActiveEvents: activeEvents.length > 0
+    readonly property int deletionEventCount: activeEvents.filter(function(event) {
+        return Boolean(event && event.willBeDeleted)
+    }).length
+    readonly property bool hasDeletableEvents: deletionEventCount > 0
 
     signal confirmed()
 
-    title: hasActiveEvents ? qsTr("Excluir página com eventos da Agenda") : qsTr("Excluir página")
+    title: hasDeletableEvents ? qsTr("Excluir página com eventos da Agenda") : qsTr("Excluir página")
     modal: true
     focus: true
     anchors.centerIn: parent
@@ -83,7 +87,8 @@ Dialog {
             if (!calendarEvent) continue
             var linkedPageId = calendarEvent.page_id === null || calendarEvent.page_id === undefined
                     ? "" : String(calendarEvent.page_id)
-            var linked = linkedPageId.length > 0 && Boolean(subtree[linkedPageId])
+            var willBeDeleted = linkedPageId.length > 0 && Boolean(subtree[linkedPageId])
+            var linked = willBeDeleted
             var linkedPageTitle = linkedPageId && pagesById[linkedPageId]
                     ? String(pagesById[linkedPageId].title || noteTitle) : noteTitle
 
@@ -111,6 +116,7 @@ Dialog {
             var startTimestamp = startValue ? Date.parse(startValue) : NaN
             result.push(Object.assign({}, calendarEvent, {
                 pageTitle: linkedPageTitle,
+                willBeDeleted: willBeDeleted,
                 displayDate: !isNaN(startTimestamp)
                              ? Qt.formatDateTime(new Date(startTimestamp), "dd/MM HH:mm")
                              : qsTr("Sem data")
@@ -133,11 +139,11 @@ Dialog {
                 Layout.preferredWidth: 40
                 Layout.preferredHeight: 40
                 radius: 20
-                color: deleteDialog.hasActiveEvents ? "#26f59e0b" : "#1af43f5e"
+                color: deleteDialog.hasDeletableEvents ? "#26f59e0b" : "#1af43f5e"
                 AppIcon {
                     anchors.centerIn: parent
-                    name: deleteDialog.hasActiveEvents ? "calendar" : "alert-triangle"
-                    color: deleteDialog.hasActiveEvents ? "#fbbf24" : "#fb7185"
+                    name: deleteDialog.hasDeletableEvents ? "calendar" : "alert-triangle"
+                    color: deleteDialog.hasDeletableEvents ? "#fbbf24" : "#fb7185"
                     width: 20
                     height: 20
                 }
@@ -170,6 +176,7 @@ Dialog {
             visible: deleteDialog.hasActiveEvents
             pageName: deleteDialog.noteTitle
             events: deleteDialog.activeEvents
+            deletionCount: deleteDialog.deletionEventCount
         }
 
         Text {
@@ -212,8 +219,8 @@ Dialog {
                 id: confirmButton
                 objectName: "notesDeleteConfirmButton"
                 text: deleteDialog.isDeleting ? qsTr("Excluindo...")
-                     : deleteDialog.hasActiveEvents
-                       ? qsTr("Sim, excluir página e %1 evento(s)").arg(deleteDialog.activeEvents.length)
+                     : deleteDialog.hasDeletableEvents
+                       ? qsTr("Sim, excluir página e %1 evento(s)").arg(deleteDialog.deletionEventCount)
                        : qsTr("Sim, excluir")
                 enabled: !deleteDialog.isDeleting
                 onClicked: deleteDialog.accept()
