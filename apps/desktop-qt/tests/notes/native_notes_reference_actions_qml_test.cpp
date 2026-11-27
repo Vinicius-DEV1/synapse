@@ -83,14 +83,23 @@ private slots:
         QVERIFY(textEdit);
         QVERIFY(dialog);
         QVERIFY(removeButton);
-        textEdit->setProperty("cursorPosition", 23);
-        auto *textItem = qobject_cast<QQuickItem *>(textEdit);
-        QVERIFY(textItem);
-        textItem->forceActiveFocus();
         auto *textDocument = qobject_cast<QQuickTextDocument *>(
             textEdit->property("textDocument").value<QObject *>());
         QVERIFY(textDocument);
-        QCOMPARE(operations.richPlainText(textDocument), QString("Before↗ Target page↗ Target pageAfter"));
+        const QString objectMarker(QChar::ObjectReplacementCharacter);
+        QCOMPARE(operations.richPlainText(textDocument),
+                 QString("Before") + objectMarker + objectMarker + QString("After"));
+        QVariantMap lastReference;
+        for (int position = 0; position < textDocument->textDocument()->characterCount() - 1; ++position) {
+            const QVariantMap candidate = operations.richPageReferenceAt(
+                textDocument, position, position, false);
+            if (!candidate.isEmpty()) lastReference = candidate;
+        }
+        QVERIFY(!lastReference.isEmpty());
+        textEdit->setProperty("cursorPosition", lastReference.value("end"));
+        auto *textItem = qobject_cast<QQuickItem *>(textEdit);
+        QVERIFY(textItem);
+        textItem->forceActiveFocus();
         QTest::keyClick(&window, Qt::Key_Backspace);
         QTRY_VERIFY(dialog->property("visible").toBool());
         QCOMPARE(editor->property("sourceHtml").toString(), source);
@@ -121,6 +130,14 @@ private slots:
         QVERIFY(dialog);
         QVERIFY(removeButton);
         QVERIFY(keepButton);
+        auto *textDocument = qobject_cast<QQuickTextDocument *>(
+            textEdit->property("textDocument").value<QObject *>());
+        QVERIFY(textDocument);
+        QCOMPARE(operations.richPlainText(textDocument),
+                 QString("Before") + QChar::ObjectReplacementCharacter + QString("After"));
+        const QVariantMap deletedReference = operations.richPageReferenceAt(textDocument, 6, 6, false);
+        QCOMPARE(deletedReference.value("title").toString(), QString("Old page"));
+        QVERIFY(deletedReference.value("deleted").toBool());
         const QString href = QStringLiteral("synapse-page:/deleted-page?title=Old%20page");
         QVERIFY(QMetaObject::invokeMethod(textEdit, "linkActivated", Qt::DirectConnection, Q_ARG(QString, href)));
         QTRY_VERIFY(dialog->property("visible").toBool());

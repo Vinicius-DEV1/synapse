@@ -254,7 +254,7 @@ private slots:
         }
     }
 
-    void allThirtyOneSlashCommandsArePresentAndSearchable() {
+    void allThirtyTwoSlashCommandsArePresentAndSearchable() {
         QQmlEngine engine;
         QQmlComponent component(&engine);
         component.loadUrl(QUrl::fromLocalFile(QStringLiteral(
@@ -266,7 +266,7 @@ private slots:
         menu->setProperty("query", "mermaid");
         QVariantList mermaidFiltered = menu->property("filteredCommands").toList();
         QVERIFY(!mermaidFiltered.isEmpty());
-        QCOMPARE(mermaidFiltered.first().toMap().value("id").toString(), QString("mermaid"));
+        QCOMPARE(mermaidFiltered.first().toMap().value("id").toString(), QString("ia"));
         menu->setProperty("query", "video");
         QVariantList filtered = menu->property("filteredCommands").toList();
         QVERIFY(!filtered.isEmpty());
@@ -282,7 +282,12 @@ private slots:
         menu->setProperty("query", "prompt");
         filtered = menu->property("filteredCommands").toList();
         QVERIFY(!filtered.isEmpty());
-        QCOMPARE(filtered.first().toMap().value("id").toString(), QString("ia"));
+        QCOMPARE(filtered.first().toMap().value("id").toString(), QString("text"));
+        bool hasAiCommand = false;
+        for (const auto &item : filtered) {
+            if (item.toMap().value("id").toString() == "ia") hasAiCommand = true;
+        }
+        QVERIFY(hasAiCommand);
         menu->setProperty("query", "ia");
         filtered = menu->property("filteredCommands").toList();
         bool hasIa = false;

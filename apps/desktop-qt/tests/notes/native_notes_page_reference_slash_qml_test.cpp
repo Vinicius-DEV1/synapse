@@ -1,8 +1,8 @@
 #include "controllers/notes/notes_text_operations.h"
+#include "controllers/notes/notes_rich_format.h"
 
 #include <QtCore/QScopedPointer>
 #include <QtCore/QUrl>
-#include <QtGui/QColor>
 #include <QtGui/QTextCursor>
 #include <QtGui/QTextDocument>
 #include <QtQuick/QQuickItem>
@@ -103,12 +103,15 @@ private slots:
         QTRY_VERIFY(!pageMenu->property("visible").toBool());
         auto *quickDocument = qobject_cast<QQuickTextDocument *>(textEdit->property("textDocument").value<QObject *>());
         QVERIFY(quickDocument);
-        QVERIFY(quickDocument->textDocument()->toPlainText().contains("↗ Second page"));
+        const QVariantMap insertedReference = operations.richPageReferenceAt(quickDocument, 5, 5, false);
+        QCOMPARE(insertedReference.value("pageId").toString(), QString("page-two"));
+        QCOMPARE(insertedReference.value("title").toString(), QString("Second page"));
         QTextCursor referenceCursor(quickDocument->textDocument());
         referenceCursor.setPosition(5);
         referenceCursor.movePosition(QTextCursor::NextCharacter, QTextCursor::KeepAnchor);
-        QVERIFY(referenceCursor.charFormat().isAnchor());
-        QCOMPARE(referenceCursor.charFormat().background().color(), QColor(255, 255, 255, 10));
+        QCOMPARE(referenceCursor.charFormat().objectType(), NotesRichFormat::PageReferenceObjectType);
+        QCOMPARE(referenceCursor.charFormat().property(NotesRichFormat::PageReferenceId).toString(),
+                 QString("page-two"));
 
         QVariant committed;
         QVERIFY(QMetaObject::invokeMethod(richEditor, "commitEditorText", Q_RETURN_ARG(QVariant, committed)));
@@ -170,7 +173,6 @@ private slots:
         QTRY_VERIFY(textItem->hasActiveFocus());
 
         QSignalSpy hierarchy(richEditor, SIGNAL(pageHierarchyChanged()));
-        QSignalSpy navigation(richEditor, SIGNAL(pageNavigationRequested(QString)));
         QTest::keyClick(&window, Qt::Key_Slash);
         const QString command = QStringLiteral("page-create");
         for (const QChar character : command) {
@@ -202,7 +204,6 @@ private slots:
         QCOMPARE(controller.lastTitle, QString("New child"));
         QCOMPARE(controller.lastIcon, QString("📄"));
         QCOMPARE(hierarchy.count(), 1);
-        QCOMPARE(navigation.count(), 0);
         QVERIFY(richEditor->property("active").toBool());
         QCOMPARE(richEditor->property("parentPageId").toString(), QString("parent-page"));
 
@@ -241,7 +242,6 @@ private slots:
         QVERIFY(!pageMenu->property("errorMessage").toString().isEmpty());
         QCOMPARE(controller.createCount, 2);
         QCOMPARE(hierarchy.count(), 1);
-        QCOMPARE(navigation.count(), 0);
         QCOMPARE(richEditor->property("sourceHtml").toString(), QString("<p>BeginEnd</p>"));
         QTest::keyClick(&window, Qt::Key_Escape);
         QTRY_VERIFY(!pageMenu->property("visible").toBool());

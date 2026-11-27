@@ -1155,6 +1155,24 @@ int main(int argc, char **argv) {
         char *deletionArguments[] = {argv[0], deletionTest};
         return runNativeNotesRichImageDeletionQmlTest(2, deletionArguments);
     }
+    if (argc > 1 && QByteArray(argv[1]) == QByteArrayLiteral("--suite=page-reference-slash")) {
+        char testName[] = "slashSearchInsertsAtCaretSupportsUndoAndOpensFloatingPreview";
+        char *testArguments[] = {argv[0], testName};
+        return runNativeNotesPageReferenceSlashQmlTest(2, testArguments);
+    }
+    if (argc > 1 && QByteArray(argv[1]) == QByteArrayLiteral("--suite=reference-actions")) {
+        char deletionTest[] = "backspaceConfirmsAndRemovesTheWholePageReferenceAsOneEdit";
+        char deletedTest[] = "deletedReferenceOffersKeepAndConfirmedRemoval";
+        char *deletionArguments[] = {argv[0], deletionTest};
+        char *deletedArguments[] = {argv[0], deletedTest};
+        return runNativeNotesReferenceActionsQmlTest(2, deletionArguments) |
+            runNativeNotesReferenceActionsQmlTest(2, deletedArguments);
+    }
+    if (argc > 1 && QByteArray(argv[1]) == QByteArrayLiteral("--suite=slash-menu")) {
+        char testName[] = "allThirtyTwoSlashCommandsArePresentAndSearchable";
+        char *testArguments[] = {argv[0], testName};
+        return runNativeNotesSlashMenuQmlTest(2, testArguments);
+    }
     if (argc > 1 && QByteArray(argv[1]) == QByteArrayLiteral("--suite=audio-preview")) {
         char correlationTest[] = "notesAudioPreviewCorrelatesAndReleasesItsTemporaryPath";
         char cancellationTest[] = "notesAudioPreviewCancelsOnlyItsPendingRequest";
