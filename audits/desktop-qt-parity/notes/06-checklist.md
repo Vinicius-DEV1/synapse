@@ -174,7 +174,8 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 - [ ] Compare next/back navigation and restored explanation state with React in the running Notes focus UI. See QT-NOTES-083.
 - [x] Add React-equivalent Notes focus navigation using Left/Right, `<`/`>`, and Alt+Left/Right while the answer field is focused. Focused QML checks confirm sequence registration, focus gates, preserved drafts, and final-question confirmation. See QT-NOTES-084.
 - [x] Dispatch Alt+Right/Left while the answer field is focused through a visible `QQuickWindow`; verify navigation, draft restoration and explanation closing. See QT-NOTES-084.
-- [ ] Verify unmodified arrows and `<`/`>` event dispatch, first/last boundaries, pending counts, focus, and finish-dialog behavior in the running desktop application. See QT-NOTES-084.
+- [x] Dispatch unmodified Left/Right and `<`/`>` with modal focus through a visible `QQuickWindow`; verify first/last boundaries and finish confirmation. See QT-NOTES-084.
+- [ ] Verify question counts, focus behavior and the complete navigation flow in the running desktop application at a matched viewport. See QT-NOTES-084.
 - [x] Generate Notes multiple-choice option shortcuts from the current list (`1–9`, `A–Z`) and preserve option G when it exists. Focused QML tests cover eight-option mapping, text-focus/confirmed guards and G resolving to option seven. See QT-NOTES-085.
 - [x] Dispatch `G` and `7` through a visible `QQuickWindow` for a seven-option question; both select option seven. Dispatch `A` and `Z` for a 26-option question and verify indexes 0 and 25. QML mapping checks cover 1/4/9/10/26-option boundaries and reject unavailable indexes. See QT-NOTES-085.
 - [ ] Verify option shortcuts, visible letter labels and input isolation in the running desktop application at a matched viewport. See QT-NOTES-085.
