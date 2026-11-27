@@ -20,6 +20,11 @@ pub struct SearchReplaceResult {
 
 /// Parses `<<<<<<< SEARCH ... ======= ... >>>>>>>` blocks from an AI response.
 pub fn parse_search_replace_blocks(content: &str) -> Vec<SearchReplaceBlock> {
+    // React skips its parser unless this exact literal marker occurs somewhere in the response.
+    if !content.contains("<<<<<<< SEARCH") {
+        return Vec::new();
+    }
+
     let mut blocks = Vec::new();
     let mut pos = 0;
     while let Some((start, search_start)) = find_search_opening(content, pos) {
@@ -58,7 +63,10 @@ fn find_search_opening(content: &str, mut from: usize) -> Option<(usize, usize)>
         let start = from + relative;
         let after_marker = start + 7;
         let label_tail = content.get(after_marker..)?;
-        if let Some(after_label) = label_tail.trim_start().strip_prefix("SEARCH") {
+        if let Some(after_label) = label_tail
+            .trim_start_matches(is_ecmascript_whitespace)
+            .strip_prefix("SEARCH")
+        {
             let label_end = content.len() - after_label.len();
             if let Some(body_start) = whitespace_terminated_line(content, label_end) {
                 return Some((start, body_start));
@@ -90,7 +98,7 @@ fn find_marker(content: &str, from: usize, marker: &str) -> Option<usize> {
 fn whitespace_terminated_line(content: &str, from: usize) -> Option<usize> {
     let mut last_newline_end = None;
     for (offset, character) in content.get(from..)?.char_indices() {
-        if !character.is_whitespace() {
+        if !is_ecmascript_whitespace(character) {
             break;
         }
         if character == '\n' {
@@ -137,10 +145,11 @@ pub fn apply_search_replace(original: &str, blocks: &[SearchReplaceBlock]) -> Se
             continue;
         }
 
-        let trimmed = block.search.trim();
+        let trimmed = block.search.trim_matches(is_ecmascript_whitespace);
         if !trimmed.is_empty() {
             if let Some(pos) = current.find(trimmed) {
-                current = replace_once_js_compatible(&current, pos, trimmed, block.replace.trim());
+                let replacement = block.replace.trim_matches(is_ecmascript_whitespace);
+                current = replace_once_js_compatible(&current, pos, trimmed, replacement);
                 count += 1;
                 continue;
             }
@@ -165,6 +174,23 @@ pub fn apply_search_replace(original: &str, blocks: &[SearchReplaceBlock]) -> Se
         replaced_count: count,
         error: None,
     }
+}
+
+fn is_ecmascript_whitespace(character: char) -> bool {
+    matches!(
+        character,
+        '\u{0009}'..='\u{000D}'
+            | '\u{0020}'
+            | '\u{00A0}'
+            | '\u{1680}'
+            | '\u{2000}'..='\u{200A}'
+            | '\u{2028}'
+            | '\u{2029}'
+            | '\u{202F}'
+            | '\u{205F}'
+            | '\u{3000}'
+            | '\u{FEFF}'
+    )
 }
 
 fn replace_once_js_compatible(
@@ -216,78 +242,5 @@ fn replace_once_js_compatible(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn parses_and_applies_search_replace() {
-        let ai_out = "<<<<<<< SEARCH\nhello world\n=======\nhello rust\n>>>>>>>";
-        let blocks = parse_search_replace_blocks(ai_out);
-        assert_eq!(blocks.len(), 1);
-        let res = apply_search_replace("alpha\nhello world\nomega", &blocks);
-        assert!(res.success);
-        assert_eq!(res.parsed_count, 1);
-        assert_eq!(res.replaced_count, 1);
-        assert_eq!(res.result, "alpha\nhello rust\nomega");
-    }
-
-    #[test]
-    fn parses_react_marker_whitespace_and_skips_malformed_patches() {
-        let ai_out = concat!(
-            "broken <<<<<<< SEARCH without a separator\n",
-            "<<<<<<<  SEARCH  \nold value\n=======  \nnew value\n>>>>>>>\n",
-            "<<<<<<< SEARCH\nsecond\n=======\nchanged\n>>>>>>>"
-        );
-        let blocks = parse_search_replace_blocks(ai_out);
-        assert_eq!(blocks.len(), 2);
-        assert_eq!(blocks[0].search, "old value");
-        assert_eq!(blocks[0].replace, "new value");
-        assert_eq!(blocks[1].search, "second");
-        assert_eq!(blocks[1].replace, "changed");
-    }
-
-    #[test]
-    fn parses_react_optional_newlines_around_inline_delimiters() {
-        let blocks = parse_search_replace_blocks("<<<<<<< SEARCH\nold======= \nnew>>>>>>>");
-        assert_eq!(
-            blocks,
-            vec![SearchReplaceBlock {
-                search: "old".to_string(),
-                replace: "new".to_string(),
-            }]
-        );
-    }
-
-    #[test]
-    fn scans_overlapping_start_markers_like_the_react_global_regex() {
-        let blocks = parse_search_replace_blocks("<<<<<<<< SEARCH\nold\n=======\nnew\n>>>>>>>");
-        assert_eq!(blocks.len(), 1);
-        assert_eq!(blocks[0].search, "old");
-        assert_eq!(blocks[0].replace, "new");
-    }
-
-    #[test]
-    fn parses_crlf_patch_delimiters_with_react_capture_boundaries() {
-        let blocks =
-            parse_search_replace_blocks("<<<<<<< SEARCH\r\nold\r\n=======\r\nnew\r\n>>>>>>>");
-        assert_eq!(blocks.len(), 1);
-        assert_eq!(blocks[0].search, "old\r");
-        assert_eq!(blocks[0].replace, "new\r");
-        let result = apply_search_replace("old\r\n", &blocks);
-        assert!(result.success);
-        assert_eq!(result.result, "new\r\n");
-    }
-
-    #[test]
-    fn applies_javascript_string_replacement_tokens_like_react() {
-        let result = apply_search_replace(
-            "before target after",
-            &[SearchReplaceBlock {
-                search: "target".to_string(),
-                replace: "[$$][$&][$`][$']".to_string(),
-            }],
-        );
-        assert!(result.success);
-        assert_eq!(result.result, "before [$][target][before ][ after] after");
-    }
-}
+#[path = "search_replace/tests.rs"]
+mod tests;

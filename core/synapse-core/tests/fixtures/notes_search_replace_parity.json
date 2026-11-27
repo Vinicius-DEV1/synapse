@@ -1,0 +1,87 @@
+{
+  "parseCases": [
+    {
+      "name": "noncanonical marker rejected by React precheck",
+      "proposal": "<<<<<<< SEARCH\nold\n=======\nnew\n>>>>>>>",
+      "blocks": []
+    },
+    {
+      "name": "regex whitespace accepted when canonical marker is present",
+      "proposal": "<<<<<<< SEARCH\nold\n=======\nnew\n>>>>>>>\n<<<<<<< SEARCH\nsecond\n=======\nchanged\n>>>>>>>",
+      "blocks": [
+        { "search": "old", "replace": "new" },
+        { "search": "second", "replace": "changed" }
+      ]
+    },
+    {
+      "name": "overlapping opening marker prefix",
+      "proposal": "<<<<<<<< SEARCH\nold\n=======\nnew\n>>>>>>>",
+      "blocks": [{ "search": "old", "replace": "new" }]
+    },
+    {
+      "name": "CRLF capture boundary",
+      "proposal": "<<<<<<< SEARCH\r\nold\r\n=======\r\nnew\r\n>>>>>>>",
+      "blocks": [{ "search": "old\r", "replace": "new\r" }]
+    },
+    {
+      "name": "javascript whitespace exclusion",
+      "proposal": "<<<<<<<SEARCH\nold\n=======\nnew\n>>>>>>>",
+      "blocks": []
+    },
+    {
+      "name": "truncated replacement marker",
+      "proposal": "<<<<<<< SEARCH\nold\n=======\nnew\n",
+      "blocks": []
+    }
+  ],
+  "applyCases": [
+    {
+      "name": "BOM and nonbreaking space at trimmed edges",
+      "source": "before target after",
+      "proposal": "<<<<<<< SEARCH\n﻿target \n=======\n﻿updated \n>>>>>>>",
+      "success": true,
+      "result": "before updated after",
+      "replacedCount": 1
+    },
+    {
+      "name": "empty search inserts at the start",
+      "source": "tail",
+      "proposal": "<<<<<<< SEARCH\n\n=======\nstart\n>>>>>>>",
+      "success": true,
+      "result": "starttail",
+      "replacedCount": 1
+    },
+    {
+      "name": "sequential blocks replace repeated matches one at a time",
+      "source": "same same",
+      "proposal": "<<<<<<< SEARCH\nsame\n=======\none\n>>>>>>>\n<<<<<<< SEARCH\nsame\n=======\ntwo\n>>>>>>>",
+      "success": true,
+      "result": "one two",
+      "replacedCount": 2
+    },
+    {
+      "name": "JavaScript replacement tokens",
+      "source": "before target after",
+      "proposal": "<<<<<<< SEARCH\ntarget\n=======\n[$$][$&][$`][$']\n>>>>>>>",
+      "success": true,
+      "result": "before [$][target][before ][ after] after",
+      "replacedCount": 1
+    },
+    {
+      "name": "CRLF captured text applies identically",
+      "source": "old\r\n",
+      "proposal": "<<<<<<< SEARCH\r\nold\r\n=======\r\nnew\r\n>>>>>>>",
+      "success": true,
+      "result": "new\r\n",
+      "replacedCount": 1
+    },
+    {
+      "name": "JavaScript trim excludes next line",
+      "source": "before target after",
+      "proposal": "<<<<<<< SEARCH\ntarget\n=======\nchanged\n>>>>>>>",
+      "success": false,
+      "result": "before target after",
+      "replacedCount": 0
+    }
+  ]
+}
