@@ -267,6 +267,34 @@ TestCase {
         compare(quizModal.selectedOption, 6)
     }
 
+    function test_notesShortcutOptionCountBoundaries() {
+        var lengths = [1, 4, 9, 10, 26]
+        var options = []
+
+        for (var index = 0; index < lengths.length; index++) {
+            var optionCount = lengths[index]
+            options = []
+            for (var optionIndex = 0; optionIndex < optionCount; optionIndex++) {
+                options.push("Option " + (optionIndex + 1))
+            }
+            quizModal.startQuiz("battery-notes", "Notes boundary battery", [{
+                id: "choice-boundary-" + optionCount,
+                battery_id: "battery-notes",
+                type: "multiple_choice",
+                prompt: "Choose one",
+                options: options,
+                correctIndex: 0,
+                explanation: "Choice explanation"
+            }])
+
+            compare(quizModal.notesOptionIndexForKey(Qt.Key_1), 0)
+            compare(quizModal.notesOptionIndexForKey(Qt.Key_9), optionCount >= 9 ? 8 : -1)
+            compare(quizModal.notesOptionIndexForKey(Qt.Key_A), 0)
+            compare(quizModal.notesOptionIndexForKey(Qt.Key_Z), optionCount >= 26 ? 25 : -1)
+            compare(quizModal.notesOptionIndexForKey(Qt.Key_4), optionCount >= 4 ? 3 : -1)
+        }
+    }
+
     function test_providerFailureKeepsAnswerAndAllowsRetry() {
         mockEvaluator.nextSuccess = false
         OpenAnswerSession.setAnswer(quizModal, "Keep this answer")

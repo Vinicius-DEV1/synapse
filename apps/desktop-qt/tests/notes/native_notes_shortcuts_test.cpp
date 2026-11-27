@@ -138,6 +138,32 @@ private slots:
         QTest::keyClick(&window, Qt::Key_7);
         QTRY_COMPARE(focusModalObject->property("selectedOption").toInt(), 6);
 
+        QVariantList twentySixOptions;
+        for (int index = 0; index < 26; ++index) {
+            twentySixOptions.append(QStringLiteral("Option %1").arg(index + 1));
+        }
+        const QVariantMap longChoiceQuestion = {
+            {QStringLiteral("id"), QStringLiteral("choice-26")},
+            {QStringLiteral("type"), QStringLiteral("multiple_choice")},
+            {QStringLiteral("prompt"), QStringLiteral("Choose one of 26 options")},
+            {QStringLiteral("options"), twentySixOptions},
+            {QStringLiteral("correctIndex"), 0},
+            {QStringLiteral("explanation"), QStringLiteral("Choice explanation")},
+        };
+        QVERIFY(QMetaObject::invokeMethod(
+            focusModalObject,
+            "startQuiz",
+            Q_ARG(QVariant, QVariant(QStringLiteral("notes-battery"))),
+            Q_ARG(QVariant, QVariant(QStringLiteral("Notes 26-choice keyboard session"))),
+            Q_ARG(QVariant, QVariant(QVariantList{longChoiceQuestion}))));
+        focusModal->forceActiveFocus();
+        QCoreApplication::processEvents();
+        QTest::keyClick(&window, Qt::Key_A);
+        QTRY_COMPARE(focusModalObject->property("selectedOption").toInt(), 0);
+        focusModalObject->setProperty("selectedOption", -1);
+        QTest::keyClick(&window, Qt::Key_Z);
+        QTRY_COMPARE(focusModalObject->property("selectedOption").toInt(), 25);
+
         delete focusModalObject;
         window.hide();
     }
