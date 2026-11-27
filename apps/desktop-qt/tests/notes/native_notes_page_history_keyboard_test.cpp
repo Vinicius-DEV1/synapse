@@ -50,6 +50,10 @@ private slots:
             QVariantMap{{QStringLiteral("id"), QStringLiteral("older")},
                         {QStringLiteral("content"), QStringLiteral("<p>Older revision</p>")},
                         {QStringLiteral("created_at"), QStringLiteral("2026-09-01T18:00:00Z")}},
+            QVariantMap{{QStringLiteral("id"), QStringLiteral("undecryptable")},
+                        {QStringLiteral("content"), QString()},
+                        {QStringLiteral("decryption_error"), true},
+                        {QStringLiteral("created_at"), QStringLiteral("2026-08-31T18:00:00Z")}},
         }));
         modal->setProperty("visible", true);
         window.show();
@@ -94,6 +98,23 @@ private slots:
         QTest::keyClick(&window, Qt::Key_Space);
         QTRY_COMPARE(modal->property("selectedIndex").toInt(), 0);
         QVERIFY(currentRevision->hasActiveFocus());
+        modal->setProperty("selectedIndex", 2);
+        QQuickItem *decryptionError = findVisualItem(modalItem, QStringLiteral("historyDecryptionError"));
+        QTRY_VERIFY(decryptionError && decryptionError->isVisible());
+        QQuickItem *revisionContent = findVisualItem(modalItem, QStringLiteral("historyRevisionContent"));
+        QVERIFY(revisionContent && !revisionContent->isVisible());
+        QQuickItem *restoreButton = findVisualItem(modalItem, QStringLiteral("historyRestoreButton"));
+        QQuickItem *diffButton = findVisualItem(modalItem, QStringLiteral("historyDiffToggleButton"));
+        QVERIFY(restoreButton && diffButton);
+        QVERIFY(!restoreButton->property("enabled").toBool());
+        QVERIFY(!diffButton->property("enabled").toBool());
+        QSignalSpy errorRestoreRequested(modal.data(), SIGNAL(restoreRevisionRequested(QString)));
+        QVERIFY(QMetaObject::invokeMethod(modal.data(), "restoreSelectedRevision", Qt::DirectConnection));
+        QCOMPARE(errorRestoreRequested.count(), 0);
+        QCOMPARE(closeRequested.count(), 0);
+        modal->setProperty("selectedIndex", 0);
+        currentRevision->forceActiveFocus();
+        QVERIFY(currentRevision->hasActiveFocus());
         QTest::keyClick(&window, Qt::Key_Escape);
         QTRY_COMPARE(closeRequested.count(), 1);
         modal->setProperty("visible", false);
@@ -106,8 +127,6 @@ private slots:
         const QPointF closeTopRight = closeButton->mapToItem(modalItem, closeButton->width(), 0);
         QVERIFY(closeTopRight.x() <= modalItem->width() - 20);
         QQuickItem *overflowButton = findVisualItem(modalItem, QStringLiteral("historyHeaderOverflowButton"));
-        QQuickItem *diffButton = findVisualItem(modalItem, QStringLiteral("historyDiffToggleButton"));
-        QQuickItem *restoreButton = findVisualItem(modalItem, QStringLiteral("historyRestoreButton"));
         QVERIFY(overflowButton && overflowButton->isVisible());
         QVERIFY(diffButton && restoreButton);
         QVERIFY(!diffButton->isVisible());
