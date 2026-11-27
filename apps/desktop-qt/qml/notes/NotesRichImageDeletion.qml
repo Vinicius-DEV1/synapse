@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "../ui"
 
 Item {
     id: deletionRoot
@@ -76,7 +77,7 @@ Item {
         modal: true
         focus: true
         anchors.centerIn: parent
-        width: Math.min(parent.width - 32, 380)
+        width: Math.max(0, Math.min(deletionRoot.width - 32, 384))
         padding: 0
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
         standardButtons: Dialog.NoButton
@@ -114,35 +115,76 @@ Item {
         onOpened: confirmButton.forceActiveFocus()
 
         background: Rectangle {
-            color: "#1a1924"
-            radius: 14
-            border.color: "#55f87171"
+            color: "#f20f0e17"
+            radius: 12
+            border.color: "#1affffff"
         }
 
         header: Rectangle {
-            implicitHeight: 58
-            color: "#08ffffff"
-            radius: 14
-            Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: "#0cffffff" }
+            objectName: "notesRichImageDeleteHeader"
+            implicitHeight: 60
+            color: "#0dffffff"
+            radius: 12
+            Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: "#0dffffff" }
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 18
-                anchors.rightMargin: 10
+                anchors.leftMargin: 16
+                anchors.rightMargin: 8
+                spacing: 8
+                Canvas {
+                    Layout.preferredWidth: 20
+                    Layout.preferredHeight: 20
+                    antialiasing: true
+                    onPaint: {
+                        var ctx = getContext("2d")
+                        ctx.clearRect(0, 0, width, height)
+                        ctx.strokeStyle = "#f87171"
+                        ctx.lineWidth = 2
+                        ctx.lineJoin = "round"
+                        ctx.beginPath()
+                        ctx.moveTo(10, 2)
+                        ctx.lineTo(19, 18)
+                        ctx.lineTo(1, 18)
+                        ctx.closePath()
+                        ctx.moveTo(10, 7)
+                        ctx.lineTo(10, 12)
+                        ctx.moveTo(10, 15.5)
+                        ctx.lineTo(10, 15.6)
+                        ctx.stroke()
+                    }
+                }
                 Label {
+                    objectName: "notesRichImageDeleteTitle"
                     Layout.fillWidth: true
                     text: qsTr("Delete image")
                     color: "#fffffe"
-                    font.pixelSize: 14
-                    font.bold: true
+                    font.pixelSize: 18
+                    font.weight: Font.Medium
                 }
                 ToolButton {
-                    text: "×"
-                    Accessible.name: qsTr("Cancel image deletion")
+                    id: closeButton
+                    objectName: "notesRichImageDeleteCloseButton"
+                    Layout.preferredWidth: 28
+                    Layout.preferredHeight: 28
+                    Accessible.name: qsTr("Cancel and close")
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Cancel and close (do not delete)")
                     Keys.priority: Keys.BeforeItem
                     Keys.onPressed: function(event) {
                         if (deleteDialog.handleKey(event)) event.accepted = true
                     }
                     onClicked: deleteDialog.close()
+                    background: Rectangle {
+                        radius: 6
+                        color: closeButton.hovered ? "#1affffff" : "transparent"
+                    }
+                    contentItem: AppIcon {
+                        anchors.centerIn: parent
+                        name: "close"
+                        color: "#a7a9be"
+                        width: 20
+                        height: 20
+                    }
                 }
             }
         }
@@ -150,51 +192,89 @@ Item {
         contentItem: ColumnLayout {
             spacing: 8
             Label {
+                objectName: "notesRichImageDeletePrompt"
                 Layout.fillWidth: true
-                padding: 18
                 wrapMode: Text.Wrap
-                color: "#d4d4dc"
-                text: qsTr("Delete this image from the note? This edit can be undone.")
+                leftPadding: 20
+                rightPadding: 20
+                topPadding: 20
+                color: "#fffffe"
+                font.pixelSize: 14
+                text: qsTr("Do you really want to delete this image?")
+            }
+            Label {
+                objectName: "notesRichImageDeleteDescription"
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                leftPadding: 20
+                rightPadding: 20
+                bottomPadding: 20
+                color: "#a7a9be"
+                font.pixelSize: 12
+                text: qsTr("This action will remove the selected image from the document.")
             }
         }
 
-        footer: RowLayout {
-            implicitHeight: 58
-            spacing: 8
-            Item { Layout.fillWidth: true }
-            Button {
-                text: qsTr("Cancel")
-                Keys.priority: Keys.BeforeItem
-                Keys.onPressed: function(event) {
-                    if (deleteDialog.handleKey(event)) event.accepted = true
+        footer: Rectangle {
+            implicitHeight: 64
+            color: "#33000000"
+            Rectangle { anchors.top: parent.top; width: parent.width; height: 1; color: "#0dffffff" }
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 16
+                anchors.rightMargin: 16
+                spacing: 8
+                Item { Layout.fillWidth: true }
+                Button {
+                    id: cancelButton
+                    objectName: "notesRichImageDeleteCancelButton"
+                    text: qsTr("Cancel")
+                    Accessible.name: qsTr("Cancel")
+                    Keys.priority: Keys.BeforeItem
+                    Keys.onPressed: function(event) {
+                        if (deleteDialog.handleKey(event)) event.accepted = true
+                    }
+                    onClicked: deleteDialog.close()
+                    background: Rectangle {
+                        radius: 8
+                        color: cancelButton.hovered ? "#0dffffff" : "transparent"
+                    }
+                    contentItem: Label {
+                        text: cancelButton.text
+                        color: "#a7a9be"
+                        font.pixelSize: 14
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        leftPadding: 16
+                        rightPadding: 16
+                    }
                 }
-                onClicked: deleteDialog.close()
+                Button {
+                    id: confirmButton
+                    objectName: "notesRichImageDeleteConfirmButton"
+                    text: qsTr("Delete")
+                    Accessible.name: qsTr("Confirm deleting image")
+                    Keys.priority: Keys.BeforeItem
+                    Keys.onPressed: function(event) {
+                        if (deleteDialog.handleKey(event)) event.accepted = true
+                    }
+                    onClicked: deleteDialog.confirmRemoval()
+                    background: Rectangle {
+                        radius: 8
+                        color: confirmButton.hovered ? "#4def4444" : "#33ef4444"
+                        border.color: "#4def4444"
+                    }
+                    contentItem: Label {
+                        text: confirmButton.text
+                        color: confirmButton.hovered ? "#fecdd3" : "#fda4af"
+                        font.pixelSize: 14
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        leftPadding: 16
+                        rightPadding: 16
+                    }
+                }
             }
-            Button {
-                id: confirmButton
-                objectName: "notesRichImageDeleteConfirmButton"
-                text: qsTr("Delete image")
-                Accessible.name: qsTr("Confirm deleting image")
-                Keys.priority: Keys.BeforeItem
-                Keys.onPressed: function(event) {
-                    if (deleteDialog.handleKey(event)) event.accepted = true
-                }
-                onClicked: deleteDialog.confirmRemoval()
-                background: Rectangle {
-                    color: confirmButton.down ? "#be123c" : "#9f2941"
-                    radius: 8
-                }
-                contentItem: Label {
-                    text: confirmButton.text
-                    color: "#fffffe"
-                    font.bold: true
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                    leftPadding: 8
-                    rightPadding: 8
-                }
-            }
-            Item { Layout.preferredWidth: 8 }
         }
     }
 }
