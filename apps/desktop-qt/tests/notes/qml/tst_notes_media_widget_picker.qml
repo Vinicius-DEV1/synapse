@@ -231,12 +231,6 @@ TestCase {
         compare(picker.activeMode, "video")
         tryVerify(function() { return searchField.activeFocus })
 
-        keyClick(Qt.Key_Down)
-        compare(picker.selectedIndex, 1)
-        keyClick(Qt.Key_Return)
-        compare(picker.activeMode, "")
-        verify(emittedHtml.indexOf('data-media-id="video-3"') >= 0)
-
         picker.openMode("video", "", false)
 
         var closeButton = findVisualChild(picker, "notesMediaWidgetPickerCloseButton")

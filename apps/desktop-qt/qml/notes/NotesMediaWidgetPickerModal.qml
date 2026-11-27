@@ -17,7 +17,6 @@ Item {
     property string activeMode: "" // "documento" | "file-select" | "scrap" | "video" | "livro"
     property var listItems: []
     property string searchFilter: ""
-    property int selectedIndex: 0
     property bool isCapturingScrap: false
     property string scrapError: ""
     property string pendingScrapRequestId: ""
@@ -25,26 +24,10 @@ Item {
     signal insertWidgetRequested(string html)
     signal closed()
 
-    onSearchFilterChanged: selectedIndex = 0
-
-    function moveMediaSelection(delta) {
-        var itemCount = filteredItems.length
-        if (itemCount <= 0) return
-        selectedIndex = (selectedIndex + delta + itemCount) % itemCount
-    }
-
-    function selectMediaSelection() {
-        if (selectedIndex < 0 || selectedIndex >= filteredItems.length) return
-        var item = filteredItems[selectedIndex]
-        insertWidgetRequested(PickerOperations.widgetHtmlForPickedItem(item, activeMode))
-        close()
-    }
-
     function openMode(mode, prefillUrl, autoCaptureScrap) {
         activeMode = mode
         listItems = []
         searchFilter = ""
-        selectedIndex = 0
         isCapturingScrap = false
         scrapError = ""
         localFileUpload.reset()
@@ -231,16 +214,6 @@ Item {
                     font.pixelSize: 14
                     leftPadding: 34
                     onTextEdited: mediaPickerRoot.searchFilter = text
-                    Keys.priority: Keys.BeforeItem
-                    Keys.onPressed: function(event) {
-                        if (event.key === Qt.Key_Down || event.key === Qt.Key_Up) {
-                            mediaPickerRoot.moveMediaSelection(event.key === Qt.Key_Down ? 1 : -1)
-                            event.accepted = true
-                        } else if (event.key === Qt.Key_Enter || event.key === Qt.Key_Return) {
-                            mediaPickerRoot.selectMediaSelection()
-                            event.accepted = true
-                        }
-                    }
                     background: Rectangle {
                         radius: 8
                         color: "#0f0e17"
@@ -266,7 +239,6 @@ Item {
                 itemMode: mediaPickerRoot.activeMode
                 items: mediaPickerRoot.listItems
                 searchFilter: mediaPickerRoot.searchFilter
-                selectedIndex: mediaPickerRoot.selectedIndex
                 visible: mediaPickerRoot.activeMode === "file-select" ||
                     mediaPickerRoot.activeMode === "video" || mediaPickerRoot.activeMode === "livro"
                 Layout.fillWidth: true
@@ -277,7 +249,6 @@ Item {
                     mediaPickerRoot.insertWidgetRequested(PickerOperations.widgetHtmlForPickedItem(item, mode))
                     mediaPickerRoot.close()
                 }
-                onSelectedIndexRequested: function(index) { mediaPickerRoot.selectedIndex = index }
             }
 
             RowLayout {

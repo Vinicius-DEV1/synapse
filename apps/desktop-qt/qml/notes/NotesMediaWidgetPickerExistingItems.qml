@@ -14,11 +14,9 @@ ScrollView {
     property var items: []
     property string searchFilter: ""
     property string itemMode: "file-select"
-    property int selectedIndex: 0
     readonly property var filteredItems: PickerOperations.filteredItems(items, searchFilter)
 
     signal itemSelected(var item, string mode)
-    signal selectedIndexRequested(int index)
 
     ColumnLayout {
         width: existingItemsRoot.availableWidth
@@ -39,17 +37,14 @@ ScrollView {
             delegate: Button {
                 id: itemButton
                 required property var modelData
-                required property int index
                 objectName: "notesMediaWidgetItem_" + String(modelData.id || "")
                 Layout.fillWidth: true
                 Layout.preferredHeight: existingItemsRoot.itemMode === "file-select" ? 60 : 56
                 implicitHeight: existingItemsRoot.itemMode === "file-select" ? 60 : 56
-                onHoveredChanged: if (hovered) existingItemsRoot.selectedIndexRequested(index)
                 onClicked: existingItemsRoot.itemSelected(itemButton.modelData, existingItemsRoot.itemMode)
                 background: Rectangle {
                     radius: 8
-                    color: existingItemsRoot.selectedIndex === itemButton.index
-                        ? "#1affffff" : itemButton.hovered ? "#0dffffff" : "transparent"
+                    color: itemButton.hovered ? "#0dffffff" : "transparent"
                 }
                 contentItem: RowLayout {
                     spacing: 12
