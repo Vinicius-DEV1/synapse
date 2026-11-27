@@ -63,9 +63,7 @@ Item {
 
     function scrollConversationToEnd() {
         Qt.callLater(function() {
-            var flickable = messageScroll.contentItem
-            if (!flickable || typeof flickable.contentY !== "number") return
-            flickable.contentY = Math.max(0, flickable.contentHeight - messageScroll.height)
+            messageScroll.contentY = Math.max(0, messageScroll.contentHeight - messageScroll.height)
         })
     }
 
@@ -358,15 +356,22 @@ Item {
                 radius: 8
                 color: "#0f0e17"
                 border.color: "#24ffffff"
-                ScrollView {
+                Flickable {
                     id: messageScroll
                     objectName: "notesAiMessageScroll"
                     anchors.fill: parent
                     anchors.margins: 10
                     clip: true
+                    contentWidth: width
+                    contentHeight: messageColumn.implicitHeight
+                    boundsBehavior: Flickable.StopAtBounds
+
+                    ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+
                     Column {
                         id: messageColumn
                         width: parent.width
+                        height: implicitHeight
                         spacing: 12
                         onHeightChanged: aiModalRoot.scrollConversationToEnd()
                         Repeater {
