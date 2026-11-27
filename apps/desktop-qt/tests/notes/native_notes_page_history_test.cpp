@@ -21,6 +21,7 @@ public:
     bool failNextSave = false;
     int saveCalls = 0;
     QString lastSavedContent;
+    QVariantList historyEntries;
 
     Q_INVOKABLE QVariantList getPageTree(const QString &) const {
         return {page(QStringLiteral("page-one"), QStringLiteral("<p>Current content</p>")),
@@ -48,7 +49,7 @@ public:
         return true;
     }
 
-    Q_INVOKABLE QVariantList getPageHistory(const QString &) const { return {}; }
+    Q_INVOKABLE QVariantList getPageHistory(const QString &) const { return historyEntries; }
     Q_INVOKABLE QVariantList parseNoteBlocks(const QString &content) const {
         return content.isEmpty() ? QVariantList{}
             : QVariantList{QVariantMap{{QStringLiteral("blockType"), QStringLiteral("richText")}}};
@@ -131,6 +132,47 @@ private slots:
         QVERIFY(saved.toBool());
         QCOMPARE(controller.lastSavedContent, restoredContent);
         QVERIFY(!pageView->property("isDirty").toBool());
+
+        controller.historyEntries = {
+            QVariantMap{{QStringLiteral("id"), QStringLiteral("current")},
+                        {QStringLiteral("content"), QStringLiteral("<p>Current page</p>")},
+                        {QStringLiteral("created_at"), QStringLiteral("2026-09-02T18:00:00Z")}},
+            QVariantMap{{QStringLiteral("id"), QStringLiteral("older")},
+                        {QStringLiteral("content"), QStringLiteral("<p>Older page</p>")},
+                        {QStringLiteral("created_at"), QStringLiteral("2026-09-01T18:00:00Z")}},
+        };
+        QQuickWindow window;
+        window.resize(1280, 900);
+        auto *pageViewItem = qobject_cast<QQuickItem *>(pageView.data());
+        QVERIFY(pageViewItem);
+        pageViewItem->setWidth(1280);
+        pageViewItem->setHeight(900);
+        pageViewItem->setParentItem(window.contentItem());
+        window.show();
+        QTRY_VERIFY(window.isVisible());
+        QQuickItem *pageViewModalsHost = pageViewItem->findChild<QQuickItem *>(QStringLiteral("pageViewModalsHost"));
+        QTRY_VERIFY(pageViewModalsHost);
+        QTRY_COMPARE(qRound(pageViewModalsHost->width()), 1280);
+        QTRY_COMPARE(qRound(pageViewModalsHost->height()), 900);
+        QQuickItem *historyAction = nullptr;
+        QTRY_VERIFY((historyAction = findVisualItem(pageViewItem, QStringLiteral("pageHeaderAction-history"))));
+        QTRY_VERIFY(historyAction->isVisible());
+        historyAction->forceActiveFocus();
+        QVERIFY(historyAction->hasActiveFocus());
+        QTest::keyClick(&window, Qt::Key_Space);
+        QTRY_VERIFY(pageView->property("isHistoryOpen").toBool());
+        QObject *historyModal = pageView->findChild<QObject *>(QStringLiteral("pageHistoryModal"));
+        QVERIFY(historyModal);
+        QTRY_COMPARE(qRound(historyModal->property("width").toReal()), 1280);
+        QTRY_COMPARE(qRound(historyModal->property("height").toReal()), 900);
+        QCOMPARE(pageView->property("pageHistoryEntries").toList().size(), 2);
+        QQuickItem *currentHistoryRevision = nullptr;
+        QTRY_VERIFY_WITH_TIMEOUT((currentHistoryRevision = findVisualItem(pageViewItem, QStringLiteral("historyRevisionCard-0"))), 2000);
+        QTRY_VERIFY(currentHistoryRevision->hasActiveFocus());
+        QVERIFY(findVisualItem(pageViewItem, QStringLiteral("historyRevisionCard-1")));
+        QTest::keyClick(&window, Qt::Key_Escape);
+        QTRY_VERIFY(!pageView->property("isHistoryOpen").toBool());
+        QTRY_VERIFY(historyAction->hasActiveFocus());
     }
 
     void richHtmlHistoryDiffDisplaysTextWithoutMarkup() {
