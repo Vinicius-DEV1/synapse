@@ -930,3 +930,14 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | `/usr/lib/qt6/bin/qmllint --ignore-settings -s apps/desktop-qt/qml/page-view/PageHeaderActionButton.qml apps/desktop-qt/qml/page-view/PageView.qml apps/desktop-qt/qml/page-view/PageViewModalsHost.qml apps/desktop-qt/qml/notes/PageHistoryModal.qml` | Passed with no diagnostics | Parses the changed production host/action/modal QML. |
 | `git diff --check` | Passed | No whitespace issues in the final source and audit edits. |
 | Other PageView modal routes, full running-app traversal, screen-reader announcement and matched-viewport React/Qt capture | Not run | Keep QT-NOTES-093/096 partial until those acceptance checks are complete. |
+
+
+### Encrypted page-history failure handling (2026-11-27)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop-tests -j2` | Passed | Rebuilt production history modal and keyboard integration checks. |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen apps/desktop-qt/build/synapse-desktop-tests --suite=notes-history` | Passed: 4 behavior tests (8 QtTest results across history and keyboard harnesses, including setup/cleanup) | Injects a revision with `decryption_error=true`; verifies the AlertMessage role and accessible error name, revision body hidden, desktop and overflow Diff/Restore disabled, and guarded restore emits neither content nor modal close. Also covers PageView host/history and MovePageModal sizing, keyboard focus and responsive actions. This synthetic record does not exercise encryption, key rotation, locked-vault transitions or valid empty revisions through the real Core controller. |
+| `/usr/lib/qt6/bin/qmllint --ignore-settings -s apps/desktop-qt/qml/notes/PageHistoryModal.qml` | Passed with no diagnostics | Parses the modified history modal QML. |
+| `git diff --check` | Passed | No whitespace errors in the current changes. |
+| Real encrypted-history decrypt/lock/key recovery, valid empty-history restore, screen-reader announcement and matched-viewport failure state | Not run | Keep QT-NOTES-097 partial until these actual-controller and visual acceptance cases are covered. |
