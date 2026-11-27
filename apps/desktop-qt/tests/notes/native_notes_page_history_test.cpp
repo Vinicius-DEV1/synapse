@@ -270,6 +270,8 @@ private slots:
         modal->setProperty("visible", true);
         window.show();
         QTRY_VERIFY(window.isVisible());
+        QSignalSpy closeRequested(modal.data(), SIGNAL(closeRequested()));
+        QVERIFY(closeRequested.isValid());
 
         QQuickItem *currentRevision = nullptr;
         QTRY_VERIFY((currentRevision = findVisualItem(modalItem, QStringLiteral("historyRevisionCard-0"))));
@@ -292,6 +294,9 @@ private slots:
         QVERIFY(currentRevision->hasActiveFocus());
         QTest::keyClick(&window, Qt::Key_Space);
         QTRY_COMPARE(modal->property("selectedIndex").toInt(), 0);
+        QVERIFY(currentRevision->hasActiveFocus());
+        QTest::keyClick(&window, Qt::Key_Escape);
+        QTRY_COMPARE(closeRequested.count(), 1);
     }
 };
 
