@@ -182,6 +182,15 @@ private slots:
         QTRY_VERIFY(movePageModal->property("visible").toBool());
         QTRY_VERIFY(movePageModal->property("width").toReal() > 0.0);
         QTRY_VERIFY(movePageModal->property("height").toReal() > 0.0);
+        QObject *moveHeader = pageView->findChild<QObject *>(QStringLiteral("movePageModalHeader"));
+        QVERIFY(moveHeader);
+        QCOMPARE(moveHeader->property("sourceTitle").toString(), QStringLiteral("page-one"));
+        QCOMPARE(moveHeader->property("currentLocation").toString(), QStringLiteral("Raiz (Início)"));
+        QObject *moveSearch = pageView->findChild<QObject *>(QStringLiteral("movePageSearchField"));
+        QVERIFY(moveSearch);
+        QObject *moveFooter = pageView->findChild<QObject *>(QStringLiteral("movePageModalFooter"));
+        QVERIFY(moveFooter);
+        QCOMPARE(moveFooter->property("selectedLocation").toString(), QStringLiteral("Raiz (Início)"));
         QObject *confirmMoveButton = pageView->findChild<QObject *>(QStringLiteral("confirmMoveButton"));
         QVERIFY(confirmMoveButton);
         QVERIFY(!confirmMoveButton->property("enabled").toBool());

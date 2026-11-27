@@ -22,9 +22,10 @@ Dialog {
     modal: true
     focus: true
     anchors.centerIn: parent
-    width: Math.min(540, parent ? parent.width - 32 : 540)
-    height: Math.min(600, parent ? parent.height - 48 : 600)
+    width: Math.min(512, parent ? parent.width - 32 : 512)
+    height: Math.min(parent ? parent.height * 0.82 : 600, parent ? parent.height - 48 : 600)
     standardButtons: Dialog.NoButton
+    padding: 0
 
     Theme { id: theme }
 
@@ -76,6 +77,24 @@ Dialog {
             cur = normalizedId(p.parent_id)
         }
         return path.length > 0 ? path.join(" > ") : qsTr("Raiz (Início)")
+    }
+
+    function sourceTitle() {
+        var source = pageIndex[sourcePageId]
+        return source && source.title ? source.title : qsTr("Sem Título")
+    }
+
+    function submitMove() {
+        if (!hierarchyActions || sourcePageId.length === 0 || isInvalidTarget(selectedTargetId)
+                || isCurrentParentTarget(selectedTargetId) || isSubmitting) return
+        errorMessage = ""
+        isSubmitting = true
+        if (hierarchyActions.move(sourcePageId, selectedTargetId)) {
+            close()
+        } else {
+            errorMessage = qsTr("Não foi possível mover a página para este destino.")
+        }
+        isSubmitting = false
     }
 
     function toggleExpand(id) {
@@ -171,26 +190,25 @@ Dialog {
         }
         expandedIds = exp
         open()
-        Qt.callLater(function() { searchField.forceActiveFocus() })
+        Qt.callLater(function() { movePageSearchBar.focusInput() })
     }
 
     contentItem: ColumnLayout {
-        spacing: 12
-        RowLayout {
+        spacing: 0
+        MovePageModalHeader {
             Layout.fillWidth: true
-            Text { text: qsTr("Mover página para…"); color: theme.textDark; font.pixelSize: 16; font.bold: true; Layout.fillWidth: true }
-            ToolButton { text: "×"; onClicked: moveDialog.close(); contentItem: Text { text: "×"; color: theme.textSubtext; font.pixelSize: 18 } }
+            sourceTitle: moveDialog.sourceTitle()
+            currentLocation: moveDialog.breadcrumbFor(moveDialog.pageIndex[moveDialog.sourcePageId]
+                                                       ? moveDialog.pageIndex[moveDialog.sourcePageId].parent_id : "")
+            onDismiss: moveDialog.close()
         }
 
-        TextField {
-            id: searchField
+        MovePageSearchBar {
+            id: movePageSearchBar
             Layout.fillWidth: true
-            Layout.preferredHeight: 36
-            placeholderText: qsTr("Buscar destino...")
-            text: moveDialog.searchText
-            onTextChanged: moveDialog.searchText = text
-            color: theme.textDark
-            background: Rectangle { radius: 8; color: theme.bgDarkBg; border.color: searchField.activeFocus ? theme.brand500 : theme.borderCard }
+            query: moveDialog.searchText
+            onQueryEdited: (value) => { moveDialog.searchText = value }
+            onSubmitRequested: moveDialog.submitMove()
         }
 
         ListView {
@@ -199,69 +217,23 @@ Dialog {
             clip: true
             spacing: 2
             model: moveDialog.destinations()
-            delegate: Rectangle {
+            delegate: MovePageDestinationRow {
                 required property var modelData
+                target: modelData
                 width: ListView.view.width
-                height: modelData.breadcrumb.length > 0 && moveDialog.searchText.length > 0 ? 48 : 36
-                radius: 8
-                opacity: modelData.invalid ? 0.35 : 1.0
-                color: moveDialog.selectedTargetId === modelData.targetId ? theme.activePillBg
-                     : (rowMouse.containsMouse && !modelData.invalid ? theme.bgHover : "transparent")
-                border.color: moveDialog.selectedTargetId === modelData.targetId ? theme.activePillBorder : "transparent"
-
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: 8 + modelData.depth * 18
-                    anchors.rightMargin: 8
-                    spacing: 6
-
-                    Rectangle {
-                        width: 20; height: 20; radius: 4
-                        color: "transparent"
-                        visible: moveDialog.searchText.length === 0
-                        AppIcon {
-                            anchors.centerIn: parent
-                            visible: modelData.hasChildren
-                            name: moveDialog.expandedIds[modelData.targetId] ? "chevron-down" : "chevron-right"
-                            color: theme.textMuted
-                            width: 12; height: 12
-                        }
-                        MouseArea {
-                            anchors.fill: parent
-                            enabled: modelData.hasChildren
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: moveDialog.toggleExpand(modelData.targetId)
-                        }
-                    }
-
-                    Text { text: modelData.icon; font.pixelSize: 14 }
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 0
-                        Text { text: modelData.title; color: theme.textDark; font.pixelSize: 13; elide: Text.ElideRight; Layout.fillWidth: true }
-                        Text { visible: modelData.breadcrumb.length > 0 && moveDialog.searchText.length > 0; text: modelData.breadcrumb; color: theme.textMuted; font.pixelSize: 10; elide: Text.ElideRight; Layout.fillWidth: true }
-                    }
-                    Text { visible: modelData.isCurrent; text: qsTr("Atual"); color: theme.brand300; font.pixelSize: 10 }
+                height: modelData.breadcrumb.length > 0 && moveDialog.searchText.length > 0 ? 54 : (modelData.targetId === "" ? 52 : 40)
+                searchText: moveDialog.searchText
+                selectedTargetId: moveDialog.selectedTargetId
+                sourcePageId: moveDialog.sourcePageId
+                expandedIds: moveDialog.expandedIds
+                onDestinationSelected: (targetId) => {
+                    moveDialog.errorMessage = ""
+                    moveDialog.selectedTargetId = targetId
                 }
-
-            MouseArea {
-                    id: rowMouse
-                    anchors.fill: parent
-                    anchors.leftMargin: moveDialog.searchText.length === 0 && modelData.hasChildren ? 28 + modelData.depth * 18 : 0
-                    hoverEnabled: true
-                    enabled: !modelData.invalid
-                    cursorShape: modelData.invalid ? Qt.ForbiddenCursor : Qt.PointingHandCursor
-                    onClicked: {
-                        moveDialog.errorMessage = ""
-                        moveDialog.selectedTargetId = modelData.targetId
-                    }
-                    onDoubleClicked: {
-                        if (!modelData.invalid && moveDialog.hierarchyActions) {
-                            moveDialog.errorMessage = ""
-                            moveDialog.selectedTargetId = modelData.targetId
-                            confirmMoveBtn.clicked()
-                        }
-                    }
+                onExpandRequested: (targetId) => moveDialog.toggleExpand(targetId)
+                onDestinationActivated: (targetId) => {
+                    moveDialog.selectedTargetId = targetId
+                    moveDialog.submitMove()
                 }
             }
         }
@@ -275,37 +247,14 @@ Dialog {
             wrapMode: Text.Wrap
         }
 
-        RowLayout {
+        MovePageModalFooter {
             Layout.fillWidth: true
-            Item { Layout.fillWidth: true }
-            Button {
-                id: cancelMoveBtn
-                text: qsTr("Cancelar")
-                onClicked: moveDialog.close()
-                background: Rectangle { color: cancelMoveBtn.hovered ? theme.bgHover : "transparent"; radius: 8 }
-                contentItem: Text { text: cancelMoveBtn.text; color: theme.textSubtext; font.pixelSize: 13; leftPadding: 12; rightPadding: 12 }
-            }
-            Button {
-                id: confirmMoveBtn
-                objectName: "confirmMoveButton"
-                text: moveDialog.isSubmitting ? qsTr("Movendo...") : qsTr("Mover Aqui")
-                enabled: !moveDialog.isSubmitting && moveDialog.sourcePageId.length > 0
-                         && !moveDialog.isInvalidTarget(moveDialog.selectedTargetId)
-                         && !moveDialog.isCurrentParentTarget(moveDialog.selectedTargetId)
-                onClicked: {
-                    if (!moveDialog.hierarchyActions || moveDialog.isCurrentParentTarget(moveDialog.selectedTargetId)) return
-                    moveDialog.errorMessage = ""
-                    moveDialog.isSubmitting = true
-                    if (moveDialog.hierarchyActions.move(moveDialog.sourcePageId, moveDialog.selectedTargetId)) {
-                        moveDialog.close()
-                    } else {
-                        moveDialog.errorMessage = qsTr("Não foi possível mover a página para este destino.")
-                    }
-                    moveDialog.isSubmitting = false
-                }
-                background: Rectangle { color: confirmMoveBtn.enabled ? theme.brand500 : "#403b50"; radius: 8 }
-                contentItem: Text { text: confirmMoveBtn.text; color: "#ffffff"; font.pixelSize: 13; font.weight: Font.Medium; leftPadding: 14; rightPadding: 14 }
-            }
+            selectedLocation: moveDialog.breadcrumbFor(moveDialog.selectedTargetId)
+            submitting: moveDialog.isSubmitting
+            sameLocation: moveDialog.isCurrentParentTarget(moveDialog.selectedTargetId)
+            validTarget: moveDialog.sourcePageId.length > 0 && !moveDialog.isInvalidTarget(moveDialog.selectedTargetId)
+            onCancel: moveDialog.close()
+            onMove: moveDialog.submitMove()
         }
     }
 }

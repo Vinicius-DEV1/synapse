@@ -101,6 +101,12 @@ Canvas {
             ctx.closePath()
             ctx.stroke()
             break
+        case "layout-grid":
+            rect(3, 3, 8, 8, 1.5)
+            rect(13, 3, 8, 8, 1.5)
+            rect(3, 13, 8, 8, 1.5)
+            rect(13, 13, 8, 8, 1.5)
+            break
         case "files":
             rect(5, 3, 13, 16, 2)
             line([8, 7, 15, 7])
