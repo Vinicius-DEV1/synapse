@@ -177,6 +177,7 @@ if(SYNAPSE_BUILD_NATIVE_TESTS)
     find_package(Qt6 6.2 REQUIRED COMPONENTS Test)
 
     add_executable(synapse-desktop-tests
+        tests/notes/native_notes_ai_markdown_test.cpp
         tests/notes/native_notes_ai_session_test.cpp
         tests/notes/native_notes_ai_toggle_target_test.cpp
         tests/native_test_main.cpp

@@ -42,7 +42,7 @@ TestCase {
         var result = BlockAiOperations.replacementForBlock(block, "First <unsafe>\nline two\n\nNext paragraph")
         compare(result.id, "quote-1")
         compare(result.attrs.color, "#123456")
-        compare(result.innerHtml, "<p>First &lt;unsafe&gt;<br/>line two</p><p>Next paragraph</p>")
+        compare(result.innerHtml, "<p>First &lt;unsafe&gt; line two</p><p>Next paragraph</p>")
     }
 
     function test_toggleTitleAndBodyAreReplacedWithoutLosingAttributes() {

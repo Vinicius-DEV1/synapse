@@ -6,6 +6,7 @@ int runNativeNotesOpenAnswerControllerTest(int argc, char **argv);
 int runNativeNotesShortcutsTest(int argc, char **argv);
 int runNativeNotesAssistantActionsTest(int argc, char **argv);
 int runNativeNotesAiSessionTest(int argc, char **argv);
+int runNativeNotesAiMarkdownTest(int argc, char **argv);
 int runNativeNotesAiToggleTargetTest(int argc, char **argv);
 int runNativeNotesPageSwitchTest(int argc, char **argv);
 int runNativeNotesPageSwitchCoreTest(int argc, char **argv);
@@ -81,6 +82,9 @@ int main(int argc, char **argv) {
     if (argc > 1 && std::strcmp(argv[1], "--suite=notes-ai-session") == 0) {
         return runNativeNotesAiSessionTest(argc - 1, argv + 1);
     }
+    if (argc > 1 && std::strcmp(argv[1], "--suite=notes-ai-markdown") == 0) {
+        return runNativeNotesAiMarkdownTest(argc - 1, argv + 1);
+    }
     if (argc > 1 && std::strcmp(argv[1], "--suite=notes-ai-toggle-targets") == 0) {
         return runNativeNotesAiToggleTargetTest(argc - 1, argv + 1);
     }
@@ -96,6 +100,7 @@ int main(int argc, char **argv) {
     result |= runNativeNotesOpenAnswerControllerTest(argc, argv);
     result |= runNativeNotesShortcutsTest(argc, argv);
     result |= runNativeNotesAssistantActionsTest(argc, argv);
+    result |= runNativeNotesAiMarkdownTest(argc, argv);
     result |= runNativeNotesPageSwitchTest(argc, argv);
     result |= runNativeNotesPageSwitchCoreTest(argc, argv);
     result |= runNativeNotesPageHistoryTest(argc, argv);
