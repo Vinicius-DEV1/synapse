@@ -1145,6 +1145,11 @@ int main(int argc, char **argv) {
     qmlRegisterType<NotesAudioTestPlayer>("Synapse.Media", 1, 0, "MpvPlayerItem");
     qmlRegisterType<NotesAudioTestPlayer>("Synapse.Media", 1, 0, "MpvVideoPlayer");
     NativeRichQmlTest test;
+    if (argc > 1 && QByteArray(argv[1]) == QByteArrayLiteral("--suite=page-reference-search")) {
+        char searchTest[] = "contentSearchDebouncesAndIgnoresStaleResults";
+        char *searchArguments[] = {argv[0], searchTest};
+        return runNativeNotesReferenceSearchQmlTest(2, searchArguments);
+    }
     if (argc > 1 && QByteArray(argv[1]) == QByteArrayLiteral("--suite=audio-preview")) {
         char correlationTest[] = "notesAudioPreviewCorrelatesAndReleasesItsTemporaryPath";
         char cancellationTest[] = "notesAudioPreviewCancelsOnlyItsPendingRequest";

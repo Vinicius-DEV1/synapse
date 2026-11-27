@@ -46,8 +46,8 @@ Item {
     }
     readonly property string visibleErrorMessage: searchErrorMessage || errorMessage
     readonly property int footerHeight: visibleErrorMessage.length > 0 ? 36 : 0
-    readonly property int menuHeight: 80 + (options.length === 0
-        ? 48 : Math.min(260, options.length * 52)) + footerHeight
+    readonly property int menuHeight: Math.min(320, 72 + (options.length === 0
+        ? 48 : Math.min(240, options.length * 48)) + footerHeight)
 
     signal pageSelected(string pageId, string title, bool createNew)
     signal dismissed()
@@ -55,7 +55,7 @@ Item {
 
     visible: open
     z: 22
-    width: parent ? Math.max(0, Math.min(320, parent.width - 16)) : 320
+    width: parent ? Math.max(0, Math.min(288, parent.width - 16)) : 288
     height: menuHeight
     x: parent ? Math.max(8, Math.min(anchorX, parent.width - width - 8)) : anchorX
     y: {
@@ -99,9 +99,9 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        radius: 9
+        radius: 8
         color: "#0f0e17"
-        border.color: "#14ffffff"
+        border.color: "#0fffffff"
         clip: true
     }
 
@@ -111,49 +111,69 @@ Item {
 
         Text {
             width: parent.width
-            height: 34
+            height: 32
             leftPadding: 12
             verticalAlignment: Text.AlignVCenter
             color: "#a7a9be"
-            font.pixelSize: 10
+            font.pixelSize: 12
             font.weight: Font.DemiBold
             text: (referenceMenu.mode === "create" ? qsTr("CREATE OR LINK PAGE") : qsTr("LINK TO PAGE")).toUpperCase()
+            Rectangle {
+                anchors.fill: parent
+                z: -1
+                color: "#0dffffff"
+                Rectangle {
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    height: 1
+                    color: "#0dffffff"
+                }
+            }
         }
 
-        TextField {
-            id: searchField
-            objectName: "notesRichPageReferenceSearchField"
-            x: 8
-            width: parent.width - 16
-            height: 38
-            placeholderText: referenceMenu.mode === "create" ? qsTr("New page title or existing page…") : qsTr("Search page titles…")
-            text: referenceMenu.searchQuery
-            color: "#fffffe"
-            placeholderTextColor: "#77798c"
-            selectByMouse: true
-            Accessible.name: qsTr("Search existing pages")
-            background: Rectangle {
-                color: "#15141e"
-                radius: 6
-                border.color: "#18ffffff"
+        Rectangle {
+            width: parent.width
+            height: 40
+            color: "#08ffffff"
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                height: 1
+                color: "#0dffffff"
             }
-            onTextChanged: {
-                referenceMenu.searchQuery = text
-                referenceMenu.errorMessage = ""
-                referenceMenu.searchErrorMessage = ""
-                referenceMenu.searchQueryEdited(text)
-            }
-            Keys.priority: Keys.BeforeItem
-            Keys.onPressed: function(event) {
-                if (event.key === Qt.Key_Down || event.key === Qt.Key_Up) {
-                    referenceMenu.moveSelection(event.key === Qt.Key_Down ? 1 : -1)
-                    event.accepted = true
-                } else if (event.key === Qt.Key_Enter || event.key === Qt.Key_Return) {
-                    referenceMenu.select(referenceMenu.selectedIndex)
-                    event.accepted = true
-                } else if (event.key === Qt.Key_Escape) {
-                    referenceMenu.dismissed()
-                    event.accepted = true
+            TextField {
+                id: searchField
+                objectName: "notesRichPageReferenceSearchField"
+                anchors.fill: parent
+                anchors.margins: 8
+                placeholderText: referenceMenu.mode === "create" ? qsTr("New page title or existing page…") : qsTr("Search page titles…")
+                text: referenceMenu.searchQuery
+                color: "#fffffe"
+                placeholderTextColor: "#77798c"
+                font.pixelSize: 14
+                selectByMouse: true
+                Accessible.name: qsTr("Search existing pages")
+                background: Item {}
+                onTextChanged: {
+                    referenceMenu.searchQuery = text
+                    referenceMenu.errorMessage = ""
+                    referenceMenu.searchErrorMessage = ""
+                    referenceMenu.searchQueryEdited(text)
+                }
+                Keys.priority: Keys.BeforeItem
+                Keys.onPressed: function(event) {
+                    if (event.key === Qt.Key_Down || event.key === Qt.Key_Up) {
+                        referenceMenu.moveSelection(event.key === Qt.Key_Down ? 1 : -1)
+                        event.accepted = true
+                    } else if (event.key === Qt.Key_Enter || event.key === Qt.Key_Return) {
+                        referenceMenu.select(referenceMenu.selectedIndex)
+                        event.accepted = true
+                    } else if (event.key === Qt.Key_Escape) {
+                        referenceMenu.dismissed()
+                        event.accepted = true
+                    }
                 }
             }
         }
@@ -162,7 +182,7 @@ Item {
             id: pageList
             objectName: "notesRichPageReferenceList"
             width: parent.width
-            height: Math.max(0, referenceMenu.height - 80 - referenceMenu.footerHeight)
+            height: Math.max(0, referenceMenu.height - 72 - referenceMenu.footerHeight)
             clip: true
             model: referenceMenu.options
             currentIndex: referenceMenu.selectedIndex
@@ -174,8 +194,8 @@ Item {
                 required property int index
                 objectName: "notesRichPageReference_" + String(modelData.id)
                 width: pageList.width
-                height: 52
-                padding: 0
+                height: 48
+                padding: 4
                 focusPolicy: Qt.NoFocus
                 Accessible.name: String(modelData.title || qsTr("Untitled"))
                 background: Rectangle {
@@ -184,23 +204,32 @@ Item {
                         ? "#1affffff" : "transparent"
                 }
                 contentItem: Row {
-                    spacing: 10
-                    x: Math.min(18 + Number(pageButton.modelData.depth || 0) * 12, 54)
+                    spacing: 12
+                    x: Math.min(12 + Number(pageButton.modelData.depth || 0) * 12, 48)
                     width: Math.max(0, parent.width - x - 8)
                     height: parent.height
-                    Text {
-                        width: 24
+                    Rectangle {
+                        width: 32
+                        height: 32
+                        radius: 5
                         anchors.verticalCenter: parent.verticalCenter
-                        horizontalAlignment: Text.AlignHCenter
-                        color: "#a7a9be"
-                        font.pixelSize: 14
-                        text: pageButton.modelData.icon || "📄"
+                        color: "#0dffffff"
+                        border.color: "#0fffffff"
+                        Text {
+                            anchors.fill: parent
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                            color: "#fffffe"
+                            font.pixelSize: 14
+                            text: pageButton.modelData.icon || "📄"
+                        }
                     }
                     Text {
-                        width: Math.max(0, parent.width - 34)
+                        width: Math.max(0, parent.width - 44)
                         anchors.verticalCenter: parent.verticalCenter
                         color: "#fffffe"
-                        font.pixelSize: 12
+                        font.pixelSize: 14
+                        font.weight: Font.Medium
                         elide: Text.ElideRight
                         text: pageButton.modelData.title || qsTr("Untitled")
                     }
@@ -213,7 +242,7 @@ Item {
                 anchors.centerIn: parent
                 visible: referenceMenu.options.length === 0
                 color: "#a7a9be"
-                font.pixelSize: 11
+                font.pixelSize: 14
                 text: referenceMenu.searchPending
                     ? qsTr("Searching page content…") : qsTr("No matching pages found")
             }

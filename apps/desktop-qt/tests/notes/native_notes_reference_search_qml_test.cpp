@@ -59,11 +59,13 @@ private slots:
         QObject *richEditor = root->findChild<QObject *>("richTableEditor");
         QObject *textEdit = root->findChild<QObject *>("notesRichTextEditor");
         QObject *slashMenu = root->findChild<QObject *>("notesRichSlashCommandMenu");
+        QObject *referenceFlow = root->findChild<QObject *>("notesRichPageReferenceFlow");
         QObject *pageMenu = root->findChild<QObject *>("notesRichPageReferenceMenu");
         QObject *searchField = root->findChild<QObject *>("notesRichPageReferenceSearchField");
         QVERIFY(richEditor);
         QVERIFY(textEdit);
         QVERIFY(slashMenu);
+        QVERIFY(referenceFlow);
         QVERIFY(pageMenu);
         QVERIFY(searchField);
 
@@ -95,6 +97,10 @@ private slots:
         slashMenu->setProperty("selectedIndex", pageCommandIndex);
         QTest::keyClick(&window, Qt::Key_Return);
         QTRY_VERIFY(pageMenu->property("visible").toBool());
+        QTRY_VERIFY(pageMenu->property("width").toReal() > 0.0);
+        QTRY_VERIFY(pageMenu->property("height").toReal() > 0.0);
+        QVERIFY(pageMenu->property("width").toReal() <= 288.0);
+        QVERIFY(pageMenu->property("height").toReal() <= 320.0);
 
         searchField->setProperty("text", "needle");
         QVERIFY(pageMenu->property("searchPending").toBool());
@@ -121,6 +127,15 @@ private slots:
         QCOMPARE(pageMenu->property("filteredPages").toList().first().toMap().value("id").toString(),
                  QString("page-body"));
         QVERIFY(!pageMenu->property("searchPending").toBool());
+
+        auto *flowItem = qobject_cast<QQuickItem *>(referenceFlow);
+        QVERIFY(flowItem);
+        QVERIFY(flowItem->width() > 0.0);
+        QVERIFY(flowItem->height() > 0.0);
+        const QPointF outsidePoint = flowItem->mapToItem(window.contentItem(),
+            QPointF(flowItem->width() - 4.0, flowItem->height() - 4.0));
+        QTest::mouseClick(&window, Qt::LeftButton, Qt::NoModifier, outsidePoint.toPoint());
+        QTRY_VERIFY(!pageMenu->property("visible").toBool());
     }
 };
 

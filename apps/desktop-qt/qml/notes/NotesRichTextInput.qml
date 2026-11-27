@@ -489,6 +489,7 @@ Item {
 
     NotesRichPageReferenceFlow {
         id: pageReferenceFlow
+        anchors.fill: parent
         editorRoot: inputRoot.editorRoot
         textEditor: richEditor
         commitTimer: inputRoot.commitTimer

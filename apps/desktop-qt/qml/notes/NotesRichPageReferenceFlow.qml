@@ -102,6 +102,27 @@ Item {
         return true
     }
 
+    MouseArea {
+        id: outsideClickArea
+        objectName: "notesRichPageReferenceOutsideClickArea"
+        anchors.fill: parent
+        z: 21
+        visible: referenceFlow.open
+        acceptedButtons: Qt.LeftButton
+        propagateComposedEvents: true
+        onClicked: function(mouse) {
+            var point = pageReferenceMenu.mapFromItem(outsideClickArea, mouse.x, mouse.y)
+            var insideMenu = point.x >= 0 && point.y >= 0
+                    && point.x <= pageReferenceMenu.width && point.y <= pageReferenceMenu.height
+            if (insideMenu) {
+                mouse.accepted = true
+                return
+            }
+            referenceFlow.close()
+            mouse.accepted = false
+        }
+    }
+
     NotesRichPageReferenceMenu {
         id: pageReferenceMenu
         open: referenceFlow.open
