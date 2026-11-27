@@ -1,5 +1,14 @@
 # Caderno Verification Plan
 
+### Move Page dialog iteration (2026-11-27)
+
+| Check | Result | Scope and limits |
+| --- | --- | --- |
+| `/usr/lib/qt6/bin/qmllint -I apps/desktop-qt/qml apps/desktop-qt/qml/modals/MovePageModal.qml apps/desktop-qt/qml/modals/MovePageModalHeader.qml apps/desktop-qt/qml/modals/MovePageSearchBar.qml apps/desktop-qt/qml/modals/MovePageModalFooter.qml apps/desktop-qt/qml/modals/MovePageDestinationRow.qml` | Passed, exit code 0; existing unqualified delegate/context diagnostics remain in `MovePageModal.qml` | The native dialog and four focused presentation components parse. Lint does not establish rendered parity, runtime keyboard behavior, or resize behavior. |
+| `cmake --build apps/desktop-qt/build --target synapse-desktop-tests -j2` | Passed | Rebuilt the production PageView integration test binary against the changed QML tree. |
+| `GSETTINGS_BACKEND=memory QT_QPA_PLATFORM=offscreen apps/desktop-qt/build/synapse-desktop-tests --suite=notes-history` | Passed: 8 QtTest rows across page history and page-history keyboard suites | The production PageView path verifies Move Page opens with nonzero dimensions; its header receives the source title and current breadcrumb; search/footer components mount; the selected destination path is correct; and the current-parent action disables/enables correctly for root vs another destination. It also exercises existing history behavior. The test does not take screenshots or cover all Move Page key/focus paths. |
+| Same-viewport React/Qt screenshots, narrow-window live resize, Tab/Shift+Tab, Enter/Escape propagation, focus return, search clear and invalid-target interaction | Not run | Keep QT-NOTES-099 and its remaining checklist items open until visible application evidence exists. |
+
 ## Current pass boundary
 
 The current source audit, event-widget changes, Core cursor/entity fix, and native page-reference object/clipboard/serialization changes were built and QML-linted as noted below. Desktop and focused test binaries were compiled, but no tests were executed. No screenshots, accessibility checks or benchmarks were run. Do not treat prior test counts or earlier parity-document entries as verification for this worktree. The scenarios below remain the implementation acceptance plan; source/build checks do not establish runtime or visual parity.

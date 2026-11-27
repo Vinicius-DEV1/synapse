@@ -52,6 +52,9 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 - [ ] Compare responsive margins, cover offset, title, icon, description, breadcrumbs, sub-page grid and footer spacing.
 - [ ] Verify root/child creation, linked page creation, rename, description, icon, pin, duplicate, move, reorder, delete, restore, import, export and share actions.
 - [ ] Verify hierarchy cycle rejection, deleted/missing parent handling, sort order, breadcrumb refresh, and failed persistence feedback.
+- [x] Disable Move Page confirmation when the selected target is already the current parent; a production `PageView` test verifies it disables, enables for a different page, and disables again when returned to the current parent (QT-NOTES-098).
+- [x] Port React's Move Page source context, search/clear affordance, explanatory root row, current/source/selected indicators, destination summary, context-sensitive action label, and 512 px / 82vh responsive sizing into focused Qt components (QT-NOTES-099). QML lint and production PageView integration pass; visual capture and keyboard/focus acceptance remain open.
+- [ ] Compare Move Page modal at matched viewport sizes; verify responsive resize, backdrop, Tab/Shift+Tab, focus entry/return, Enter/Escape, error/busy states and hierarchy/search edge cases (QT-NOTES-099).
 - [ ] Compare page tree selection, search, collapsed state, scroll state, context menu, keyboard focus, and tabs.
 - [ ] Compare cover URL/local file validation, replacement, remove, decode/resize, failure, cancellation, and saved metadata.
 - [ ] Verify empty, loading, not-found, locked, unlocked, encrypted, no-content and save-error states.
