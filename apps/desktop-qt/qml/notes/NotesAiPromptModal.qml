@@ -6,6 +6,7 @@ import QtQuick.Layouts 1.15
 import "../ui"
 import "NotesBlockAiSession.js" as BlockAiSession
 import "NotesBlockAiPrompt.js" as BlockAiPrompt
+import "NotesBlockAiOperations.js" as BlockAiOperations
 
 Item {
     id: aiModalRoot
@@ -49,6 +50,15 @@ Item {
 
     function hasBlockInsertAction() {
         return blockScoped && blockApplyHandler && typeof blockApplyHandler.insertContent === "function"
+    }
+
+    function displayMessage(message, index) {
+        var content = String(message && message.content || "")
+        if (index === 0 && content.indexOf("Contexto:\n") === 0) {
+            var instructionStart = content.indexOf("Instrução:\n")
+            if (instructionStart >= 0) return content.substring(instructionStart + "Instrução:\n".length)
+        }
+        return content
     }
 
     function openModal(selection, fullHtml, applyHandler) {
@@ -142,7 +152,7 @@ Item {
             ? BlockAiPrompt.systemInstruction(blockApplyHandler.blockType, blockApplyHandler.blockLanguage)
             : "Você é um assistente de edição de notas no Synapse. Responda de forma clara e direta em português. Quando reescrever ou editar um trecho existente, devolva o novo texto limpo em HTML simples (<p>, <ul>, <li>, <strong>, <em>)."
         var userPrompt = (chatHistory.length === 0 && baseText.length > 0)
-            ? ("Instrução: " + instruction + "\n\nConteúdo de referência:\n" + baseText)
+            ? ("Contexto:\n\"" + baseText + "\"\n\nInstrução:\n" + instruction)
             : instruction
 
         var c = aiModalRoot.controller
@@ -298,30 +308,6 @@ Item {
                 }
             }
 
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
-                TextField {
-                    id: customInput
-                    Layout.fillWidth: true
-                    placeholderText: aiModalRoot.blockScoped
-                        ? qsTr("Instrução para a IA neste bloco...") : qsTr("Peça qualquer coisa à IA...")
-                    placeholderTextColor: "#52525b"
-                    color: "#fffffe"
-                    font.pixelSize: 13
-                    background: Rectangle { radius: 8; color: "#0f0e17"; border.color: activeFocus ? "#8b5cf6" : "#2e2e38" }
-                    onAccepted: aiModalRoot.runPrompt(text)
-                }
-                Button {
-                    Layout.preferredHeight: 36
-                    padding: 12
-                    enabled: !aiModalRoot.isGenerating && customInput.text.trim().length > 0
-                    onClicked: aiModalRoot.runPrompt(customInput.text)
-                    background: Rectangle { radius: 8; color: enabled ? "#7c3aed" : "#27272a" }
-                    contentItem: Text { text: aiModalRoot.isGenerating ? qsTr("Gerando...") : qsTr("Enviar"); color: "#ffffff"; font.pixelSize: 12; font.bold: true }
-                }
-            }
-
             Text {
                 visible: aiModalRoot.errorText.length > 0
                 text: aiModalRoot.errorText
@@ -356,7 +342,7 @@ Item {
             }
 
             Rectangle {
-                visible: aiModalRoot.aiReply.length > 0
+                visible: aiModalRoot.chatHistory.length > 0 || aiModalRoot.isGenerating
                 Layout.fillWidth: true
                 Layout.preferredHeight: aiModalRoot.blockScoped ? 210 : 190
                 radius: 8
@@ -366,18 +352,53 @@ Item {
                     anchors.fill: parent
                     anchors.margins: 10
                     clip: true
-                    Text {
+                    Column {
+                        id: messageColumn
                         width: parent.width
-                        text: aiModalRoot.showDiff && aiModalRoot.previewDiffHtml.length > 0
-                            ? aiModalRoot.previewDiffHtml
-                            : aiModalRoot.chatHistory.map(function(message) {
-                                return (message.role === "user" ? qsTr("Você") : "IA") + ": " + String(message.content || "")
-                            }).join("\n\n")
-                        textFormat: aiModalRoot.showDiff && aiModalRoot.previewDiffHtml.length > 0
-                            ? Text.RichText : Text.PlainText
-                        color: "#e2e8f0"
-                        font.pixelSize: 12
-                        wrapMode: Text.WordWrap
+                        spacing: 12
+                        Repeater {
+                            id: aiMessagesRepeater
+                            objectName: "notesAiMessagesRepeater"
+                            model: aiModalRoot.chatHistory
+                            delegate: Item {
+                                id: messageRow
+                                objectName: "notesAiMessageRow"
+                                required property var modelData
+                                required property int index
+                                readonly property bool userMessage: String(modelData.role || "") === "user"
+                                width: messageColumn.width
+                                height: messageBubble.implicitHeight
+                                Rectangle {
+                                    id: messageBubble
+                                    x: messageRow.userMessage ? messageRow.width - width : 0
+                                    width: Math.min(messageRow.width * 0.88, messageText.implicitWidth + 24)
+                                    height: messageText.implicitHeight + 16
+                                    implicitHeight: height
+                                    radius: 10
+                                    color: messageRow.userMessage ? "#6d28d9" : "#1a1b22"
+                                    border.color: messageRow.userMessage ? "transparent" : "#24ffffff"
+                                    Text {
+                                        id: messageText
+                                        objectName: "notesAiMessageText"
+                                        anchors.fill: parent
+                                        anchors.margins: 8
+                                        text: messageRow.userMessage
+                                            ? aiModalRoot.displayMessage(messageRow.modelData, messageRow.index)
+                                            : BlockAiOperations.richContentHtml(String(messageRow.modelData.content || ""))
+                                        textFormat: messageRow.userMessage ? Text.PlainText : Text.RichText
+                                        color: messageRow.userMessage ? "#ffffff" : "#e4e4e7"
+                                        font.pixelSize: 12
+                                        wrapMode: Text.WordWrap
+                                    }
+                                }
+                            }
+                        }
+                        Text {
+                            visible: aiModalRoot.isGenerating
+                            text: qsTr("IA pensando…")
+                            color: "#a1a1aa"
+                            font.pixelSize: 11
+                        }
                     }
                 }
             }
@@ -440,6 +461,30 @@ Item {
                         font.pixelSize: 12
                         font.bold: true
                     }
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                TextField {
+                    id: customInput
+                    Layout.fillWidth: true
+                    placeholderText: aiModalRoot.blockScoped
+                        ? qsTr("Instrução para a IA neste bloco...") : qsTr("Peça qualquer coisa à IA...")
+                    placeholderTextColor: "#52525b"
+                    color: "#fffffe"
+                    font.pixelSize: 13
+                    background: Rectangle { radius: 8; color: "#0f0e17"; border.color: activeFocus ? "#8b5cf6" : "#2e2e38" }
+                    onAccepted: aiModalRoot.runPrompt(text)
+                }
+                Button {
+                    Layout.preferredHeight: 36
+                    padding: 12
+                    enabled: !aiModalRoot.isGenerating && customInput.text.trim().length > 0
+                    onClicked: aiModalRoot.runPrompt(customInput.text)
+                    background: Rectangle { radius: 8; color: enabled ? "#7c3aed" : "#27272a" }
+                    contentItem: Text { text: aiModalRoot.isGenerating ? qsTr("Gerando...") : qsTr("Enviar"); color: "#ffffff"; font.pixelSize: 12; font.bold: true }
                 }
             }
         }

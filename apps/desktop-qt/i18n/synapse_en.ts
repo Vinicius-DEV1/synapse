@@ -4454,6 +4454,10 @@ Editor shortcuts are disabled while an editor dialog is open.</translation>
       <translation>Copied</translation>
     </message>
     <message>
+      <source>IA pensando…</source>
+      <translation>AI is thinking…</translation>
+    </message>
+    <message>
       <source>Inserir</source>
       <translation>Insert</translation>
     </message>
