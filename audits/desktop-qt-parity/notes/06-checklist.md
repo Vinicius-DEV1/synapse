@@ -60,7 +60,7 @@ Keep boxes unchecked until source review and current evidence exist. Use small c
 - [ ] Compare page deletion confirmation with React at matched viewport; verify event list scrolling/truncation, no-event state, keyboard/focus/cancel, narrow sizing, live Core soft-delete/restore for linked and inline-only events, and inline-linked events in non-active descendant content (QT-NOTES-100/102).
 - [x] Anchor the page-reference flow to the editor and verify its production menu has non-zero geometry within React's 288×320 px bounds (QT-NOTES-101).
 - [x] Match the React page-reference heading/search/result dimensions, 48 px rows and framed 32 px icon tile; retain Qt's Core content search and stale-response cancellation (QT-NOTES-101).
-- [x] Close the page-reference menu on outside clicks within the editor while preserving native editor caret movement; verify both via visible-window production QML test (QT-NOTES-101/103).
+- [x] Close the page-reference menu on editor clicks outside the menu while preserving native caret movement; remove any overlay that intercepts the pointer and verify both via visible-window production QML test (QT-NOTES-101/103).
 - [ ] Compare React/Qt page-reference menu screenshots at identical viewport, scale, content and query; verify edge flip, narrow resize, colors, hover, scrolling and errors (QT-NOTES-101).
 - [ ] Verify outside-editor dismissal, drag selection on the dismissal gesture, focus entry/return, screen-reader announcement, keyboard propagation and saved-caret insertion in the running app (QT-NOTES-101/103).
 - [ ] Compare page tree selection, search, collapsed state, scroll state, context menu, keyboard focus, and tabs.

@@ -984,7 +984,7 @@ Exact focused QML lint command for the file-widget lifecycle iteration:
 | `git diff --check` | Passed | Checked the implementation and audit changes before the implementation commit. |
 | Matched-viewport React/Qt screenshots, resize/edge placement, screen-reader/focus review, and clicks outside the editor viewport | Not run | Keep QT-NOTES-101 partial; the native click catcher currently covers the editor bounds, while React listens on the full document. |
 
-The same focused `page-reference-search` command was rerun after replacing the swallowing `MouseArea` with a passive `TapHandler`; it passed all 3 rows and confirmed `cursorPosition` changes. `qmllint` on `NotesRichPageReferenceFlow.qml`, `NotesRichPageReferenceMenu.qml` and `NotesRichTextInput.qml` passed with no diagnostics. The production harness checks a simple click; drag selection and pointer activity outside the editor viewport remain unverified (QT-NOTES-103).
+The same focused `page-reference-search` command was rerun after removing the swallowing `MouseArea`; the existing `NotesRichTextInput` tap handler closes the flow and the click now reaches `TextEdit`. It passed all 3 rows and confirmed `cursorPosition` changes. `qmllint` on `NotesRichPageReferenceFlow.qml`, `NotesRichPageReferenceMenu.qml` and `NotesRichTextInput.qml` passed with no diagnostics. The production harness checks a simple click; drag selection and pointer activity outside the editor viewport remain unverified (QT-NOTES-103).
 
 
 ### Page-deletion event impact accuracy (2026-11-27)
