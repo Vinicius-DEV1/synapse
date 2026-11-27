@@ -161,7 +161,7 @@ pub fn apply_search_replace(original: &str, blocks: &[SearchReplaceBlock]) -> Se
             parsed_count: blocks.len(),
             replaced_count: count,
             error: Some(format!(
-                "Trecho de busca não encontrado no bloco #{}.",
+                "Trecho de busca não encontrado no bloco atual (bloco #{}).",
                 i + 1
             )),
         };

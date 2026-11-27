@@ -81,7 +81,8 @@
       "proposal": "<<<<<<< SEARCH\ntarget\n=======\nchanged\n>>>>>>>",
       "success": false,
       "result": "before target after",
-      "replacedCount": 0
+      "replacedCount": 0,
+      "error": "Trecho de busca não encontrado no bloco atual (bloco #1)."
     }
   ]
 }

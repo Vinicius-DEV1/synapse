@@ -15,6 +15,7 @@ for (const testCase of fixture.applyCases) {
   assert.equal(result.success, testCase.success, `success: ${testCase.name}`);
   assert.equal(result.result, testCase.result, `result: ${testCase.name}`);
   assert.equal(result.replacedCount, testCase.replacedCount, `replaced count: ${testCase.name}`);
+  if (testCase.error !== undefined) assert.equal(result.error, testCase.error, `error: ${testCase.name}`);
 }
 
 console.log(`React SEARCH/REPLACE parity fixtures passed (${fixture.parseCases.length + fixture.applyCases.length} cases).`);

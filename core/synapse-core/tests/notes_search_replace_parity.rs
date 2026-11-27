@@ -24,6 +24,7 @@ struct ApplyCase {
     success: bool,
     result: String,
     replaced_count: usize,
+    error: Option<String>,
 }
 
 #[derive(Deserialize, PartialEq, Debug)]
@@ -60,5 +61,6 @@ fn shared_react_parity_fixtures_match() {
             "replaced count: {}",
             case.name
         );
+        assert_eq!(result.error, case.error, "error: {}", case.name);
     }
 }
