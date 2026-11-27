@@ -4,7 +4,7 @@ This inventory is limited to Caderno Notes paths in Desktop Qt, the Notes domain
 
 ## Snapshot
 
-Line counts were collected on 2026-11-26 with `wc -l` from the active worktree. Re-run the command before each extraction because later edits can change the counts.
+Line counts were refreshed on 2026-11-27 with `wc -l` from the active worktree after the page-history fixes. Re-run the command before each extraction because later edits can change the counts.
 
 ```bash
 find apps/desktop-qt/qml/notes \
@@ -21,26 +21,28 @@ find apps/desktop-qt/qml/notes \
 
 | Lines | File |
 | ---: | --- |
-| 715 | `apps/desktop-qt/qml/notes/BlockListEditor.qml` |
+| 716 | `apps/desktop-qt/qml/notes/BlockListEditor.qml` |
 | 522 | `apps/desktop-qt/qml/notes/NotesRichTextInput.qml` |
-| 437 | `apps/desktop-qt/qml/notes/NotesToggleBlock.qml` |
+| 438 | `apps/desktop-qt/qml/notes/NotesToggleBlock.qml` |
+| 422 | `apps/desktop-qt/qml/notes/NotesEditorModalsHost.qml` |
 | 393 | `apps/desktop-qt/qml/notes/NotesRichTextEditor.qml` |
-| 353 | `apps/desktop-qt/qml/notes/BlockDelegateRouter.qml` |
-| 350 | `apps/desktop-qt/qml/notes/NotesEditorModalsHost.qml` |
-| 344 | `apps/desktop-qt/qml/notes/QuestionBlock.qml` |
-| 340 | `apps/desktop-qt/qml/notes/DocumentBundleManagerDialog.qml` |
+| 366 | `apps/desktop-qt/qml/notes/PageHistoryModal.qml` |
+| 360 | `apps/desktop-qt/qml/notes/QuestionBlock.qml` |
+| 354 | `apps/desktop-qt/qml/notes/BlockDelegateRouter.qml` |
+| 353 | `apps/desktop-qt/qml/notes/NotesTableExcelGrips.qml` |
 | 340 | `apps/desktop-qt/qml/notes/NotesColumnLayout.qml` |
-| 325 | `apps/desktop-qt/qml/notes/LinkPreviewCard.qml` |
-| 322 | `apps/desktop-qt/qml/notes/NotesTableExcelGrips.qml` |
+| 340 | `apps/desktop-qt/qml/notes/DocumentBundleManagerDialog.qml` |
+| 332 | `apps/desktop-qt/qml/notes/LinkPreviewCard.qml` |
 | 317 | `apps/desktop-qt/qml/notes/YouTubeWatchModal.qml` |
+| 308 | `apps/desktop-qt/qml/notes/NotesFilePreviewModal.qml` |
 | 302 | `apps/desktop-qt/qml/notes/NotesSelectionBubbleToolbar.qml` |
-| 301 | `apps/desktop-qt/qml/notes/NotesMediaWidgetPickerModal.qml` |
+| 301 | `apps/desktop-qt/qml/notes/FileAttachmentWidget.qml` |
 
 ### Desktop Qt Notes controllers (`apps/desktop-qt/src/controllers/notes/`)
 
 | Lines | File |
 | ---: | --- |
-| 479 | `apps/desktop-qt/src/controllers/notes/notes_controller.cpp` |
+| 486 | `apps/desktop-qt/src/controllers/notes/notes_controller.cpp` |
 | 456 | `apps/desktop-qt/src/controllers/notes/notes_rich_code_blocks.cpp` |
 | 375 | `apps/desktop-qt/src/controllers/notes/notes_rich_spoilers.cpp` |
 | 347 | `apps/desktop-qt/src/controllers/notes/notes_text_operations.cpp` |
@@ -67,11 +69,11 @@ find apps/desktop-qt/qml/notes \
 | 374 | `bridges/bridge-qt/src/domain/notes/pages.rs` |
 | 332 | `bridges/bridge-qt/src/domain/notes/table_ast_ffi.rs` |
 
-Total: **30 files** above the source-length target in this scoped scan.
+Total: **32 files** above the source-length target in this scoped scan.
 
 ## Recent decomposition check
 
-`FileAttachmentWidget.qml` now delegates identity, rename, toolbar actions, and selected-widget keyboard handling to focused sibling components. Current line counts are 299 lines for the Core-backed widget, 106 for `FileAttachmentRenameEditor.qml`, 72 for `FileAttachmentIdentity.qml`, 72 for `FileAttachmentActionBar.qml`, and 21 for `FileAttachmentKeyboardActions.qml`; all are below the target. The extracted keyboard scope parses and the native app target builds, but preview-return focus and key routing still need runtime acceptance.
+`FileAttachmentWidget.qml` delegates identity, rename, toolbar actions, and selected-widget keyboard handling to focused sibling components. Its current count is 301 lines, so it remains just above the target despite the extraction; `FileAttachmentRenameEditor.qml`, `FileAttachmentIdentity.qml`, `FileAttachmentActionBar.qml`, and `FileAttachmentKeyboardActions.qml` remain individually below 300 lines. The extracted keyboard scope parses and the native app target builds, but preview-return focus and key routing still need runtime acceptance.
 
 ## Decomposition requirements
 
