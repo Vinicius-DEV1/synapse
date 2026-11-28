@@ -67,13 +67,11 @@ export function CultureEpisodeModal({ item, isOpen, onClose, onUpdateProgress }:
 
   return (
     <Portal>
-      <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fade-in">
+      <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/65 backdrop-blur-sm animate-fade-in">
         <div className="bg-dark-card w-full max-w-3xl rounded-3xl shadow-2xl border border-white/[0.06] flex flex-col h-[85vh] overflow-hidden">
 
           {/* Header */}
-          <div className="relative p-6 overflow-hidden flex-shrink-0">
-            <div className="absolute inset-0 bg-brand-500/10 backdrop-blur-3xl" />
-            <div className="absolute -top-24 -right-24 w-48 h-48 bg-brand-500/20 rounded-full blur-3xl" />
+          <div className="relative p-6 overflow-hidden flex-shrink-0 bg-gradient-to-br from-brand-500/15 via-dark-card to-dark-card">
             <div className="relative flex justify-between items-start">
               <div className="flex gap-4 items-center">
                 {item.cover_image && (
@@ -94,7 +92,7 @@ export function CultureEpisodeModal({ item, isOpen, onClose, onUpdateProgress }:
                   <div className="mt-3 flex items-center gap-3">
                     <div className="flex-1 w-48 h-1.5 bg-black/50 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-brand-500 transition-all duration-500"
+                        className="h-full bg-brand-500 transition-[width] duration-300"
                         style={{ width: `${episodes.length > 0 ? (watchedCount / episodes.length) * 100 : 0}%` }}
                       />
                     </div>
@@ -108,12 +106,12 @@ export function CultureEpisodeModal({ item, isOpen, onClose, onUpdateProgress }:
                     onClick={startBackgroundSync}
                     disabled={isSyncing}
                     title="Sincronizar episódios novamente"
-                    className="p-2 hover:bg-white/10 rounded-full transition-colors text-white/50 hover:text-white disabled:opacity-30 backdrop-blur-md bg-black/20"
+                    className="p-2 hover:bg-white/10 rounded-full transition-colors text-white/50 hover:text-white disabled:opacity-30 bg-black/40"
                   >
                     <RefreshCw size={16} className={isSyncing ? 'animate-spin' : ''} />
                   </button>
                 )}
-                <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors text-white/70 hover:text-white backdrop-blur-md bg-black/20">
+                <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors text-white/70 hover:text-white bg-black/40">
                   <X size={20} />
                 </button>
               </div>

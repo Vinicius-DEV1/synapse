@@ -1,14 +1,19 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import type { CultureItem } from '../../types';
 import { CultureService } from '../../services/culture';
-import { CultureEpisodeModal } from './CultureEpisodeModal';
-import { CultureDeleteModal } from './CultureDeleteModal';
 import { getStatusInfo } from './cards/culture-status';
 import { CultureCardContextMenu } from './cards/CultureCardContextMenu';
 import { CultureCardList } from './cards/CultureCardList';
 import { CultureCardCompact } from './cards/CultureCardCompact';
 import { CultureCardGrid } from './cards/CultureCardGrid';
 import type { ViewMode } from './hooks/useCulture';
+
+const CultureEpisodeModal = lazy(() =>
+  import('./CultureEpisodeModal').then((m) => ({ default: m.CultureEpisodeModal }))
+);
+const CultureDeleteModal = lazy(() =>
+  import('./CultureDeleteModal').then((m) => ({ default: m.CultureDeleteModal }))
+);
 
 interface Props {
   item: CultureItem;
@@ -204,15 +209,19 @@ function CultureMediaCard({
         />
       )}
 
-      <CultureEpisodeModal
-        item={item}
-        isOpen={showEpisodes}
-        onClose={() => setShowEpisodes(false)}
-        onUpdateProgress={async (p) => { 
-          await CultureService.updateProgress(item.id, p); 
-          onUpdate(); 
-        }}
-      />
+      {showEpisodes && (
+        <Suspense fallback={null}>
+          <CultureEpisodeModal
+            item={item}
+            isOpen={showEpisodes}
+            onClose={() => setShowEpisodes(false)}
+            onUpdateProgress={async (p) => { 
+              await CultureService.updateProgress(item.id, p); 
+              onUpdate(); 
+            }}
+          />
+        </Suspense>
+      )}
 
       {contextMenu && (
         <CultureCardContextMenu
@@ -228,12 +237,16 @@ function CultureMediaCard({
         />
       )}
 
-      <CultureDeleteModal
-        isOpen={showDeleteConfirm}
-        itemTitle={item.title}
-        onClose={() => setShowDeleteConfirm(false)}
-        onConfirm={confirmDelete}
-      />
+      {showDeleteConfirm && (
+        <Suspense fallback={null}>
+          <CultureDeleteModal
+            isOpen={showDeleteConfirm}
+            itemTitle={item.title}
+            onClose={() => setShowDeleteConfirm(false)}
+            onConfirm={confirmDelete}
+          />
+        </Suspense>
+      )}
     </>
   );
 }

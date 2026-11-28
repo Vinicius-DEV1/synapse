@@ -95,20 +95,18 @@ export const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
   };
 
   return (
-    <div className="relative select-none px-2 py-1.5 border-b border-white/[0.06]">
+    <div className="relative select-none px-2 py-1 border-b border-white/[0.06]">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-white/5 transition-all text-left group"
+        className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-white/5 transition-all text-left group"
         title="Alternar Workspace"
       >
-        <div className="flex items-center gap-2.5 min-w-0">
-          <span className="text-lg leading-none shrink-0">{activeIcon}</span>
-          <div className="flex flex-col min-w-0">
-            <span className="text-xs font-semibold text-zinc-100 truncate group-hover:text-white">
-              {activeName}
-            </span>
-            <div className="mt-0.5">{renderRoleBadge(role)}</div>
-          </div>
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <span className="text-sm leading-none shrink-0">{activeIcon}</span>
+          <span className="text-xs font-semibold text-zinc-100 truncate group-hover:text-white">
+            {activeName}
+          </span>
+          <div className="shrink-0">{renderRoleBadge(role)}</div>
         </div>
         <ChevronDown
           size={14}

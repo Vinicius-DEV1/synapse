@@ -74,8 +74,8 @@ describe('PracticeChat Component', () => {
     updated_at: 1000,
   };
 
-  it('renders chat header, transcript and start call button, then shows call controls after start', () => {
-    const { getByTestId, getByText } = render(<PracticeChat session={mockSession} />);
+  it('renders chat header, transcript and start call button, then shows call controls after start', async () => {
+    const { getByTestId, getByText, findByTestId } = render(<PracticeChat session={mockSession} />);
 
     expect(getByTestId('practice-chat-header')).toBeDefined();
     expect(getByText('Sessão com IA Tutor')).toBeDefined();
@@ -87,6 +87,6 @@ describe('PracticeChat Component', () => {
 
     fireEvent.click(startBtn);
 
-    expect(getByTestId('practice-call-controls')).toBeDefined();
+    expect(await findByTestId('practice-call-controls')).toBeDefined();
   });
 });

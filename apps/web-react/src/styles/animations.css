@@ -69,12 +69,10 @@
 }
 .animate-slide-in-right {
   animation: slide-in-right 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-  will-change: transform, opacity;
   backface-visibility: hidden;
 }
 .animate-slide-in-left {
   animation: slide-in-left 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-  will-change: transform, opacity;
   backface-visibility: hidden;
 }
 
@@ -98,6 +96,11 @@
 }
 
 /* AI Chat Highlight Styles */
+@keyframes ai-glow-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.72; }
+}
+
 .ai-highlight-glow .ai-chat-reference {
   color: #a78bfa;
   background-color: rgba(139, 92, 246, 0.1);
@@ -105,7 +108,7 @@
   border-radius: 4px;
   padding: 0 2px;
   cursor: pointer;
-  animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  animation: ai-glow-pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 .ai-highlight-underline .ai-chat-reference {
@@ -214,18 +217,15 @@ span[data-type="spoiler"].is-revealed:hover {
 
 .animate-quiz-slide-forward {
   animation: quiz-slide-forward 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
-  will-change: transform, opacity;
   backface-visibility: hidden;
 }
 
 .animate-quiz-slide-backward {
   animation: quiz-slide-backward 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
-  will-change: transform, opacity;
   backface-visibility: hidden;
 }
 
 .animate-quiz-pop {
   animation: quiz-pop 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  will-change: transform, opacity;
 }
 

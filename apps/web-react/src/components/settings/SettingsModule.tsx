@@ -1,20 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { Settings, Save, Shield, Layout, Zap, Keyboard, HardDrive, DownloadCloud, RefreshCw, Video, Share2 } from 'lucide-react';
 import { getSettings, saveSettings } from '../../utils/settings';
 import type { AppSettings } from '../../utils/settings';
 
-import GeneralTab from './tabs/GeneralTab';
-import EditorTab from './tabs/EditorTab';
-import SecurityTab from './tabs/SecurityTab';
-import AiTab from './tabs/AiTab';
-import ShortcutsTab from './tabs/ShortcutsTab';
-import StorageTab from './tabs/StorageTab';
-import VideoTab from './tabs/VideoTab';
-import { BackupTab } from './tabs/BackupTab';
-import SyncMonitor from './SyncMonitor';
-import { SharingTab } from './tabs/SharingTab';
 import type { Tab } from '../../types';
 import { useI18n } from '../../i18n';
+
+const GeneralTab = lazy(() => import('./tabs/GeneralTab'));
+const EditorTab = lazy(() => import('./tabs/EditorTab'));
+const SecurityTab = lazy(() => import('./tabs/SecurityTab'));
+const AiTab = lazy(() => import('./tabs/AiTab'));
+const ShortcutsTab = lazy(() => import('./tabs/ShortcutsTab'));
+const StorageTab = lazy(() => import('./tabs/StorageTab'));
+const VideoTab = lazy(() => import('./tabs/VideoTab'));
+const BackupTab = lazy(() => import('./tabs/BackupTab').then((m) => ({ default: m.BackupTab })));
+const SyncMonitor = lazy(() => import('./SyncMonitor'));
+const SharingTab = lazy(() => import('./tabs/SharingTab').then((m) => ({ default: m.SharingTab })));
 
 export default function SettingsModule({ tab }: { tab?: Tab }) {
   const { t } = useI18n();
@@ -67,45 +68,47 @@ export default function SettingsModule({ tab }: { tab?: Tab }) {
           </div>
 
           <form onSubmit={handleSaveSettings} className="bg-dark-card border border-white/5 rounded-2xl p-4 sm:p-6 md:p-8 shadow-xl">
-            {activeTab === 'general' && (
-              <GeneralTab appSettings={appSettings} setAppSettings={setAppSettings} />
-            )}
+            <Suspense fallback={<div className="py-12 text-center text-sm text-dark-subtext animate-pulse">...</div>}>
+              {activeTab === 'general' && (
+                <GeneralTab appSettings={appSettings} setAppSettings={setAppSettings} />
+              )}
 
-            {activeTab === 'editor' && (
-              <EditorTab appSettings={appSettings} setAppSettings={setAppSettings} />
-            )}
+              {activeTab === 'editor' && (
+                <EditorTab appSettings={appSettings} setAppSettings={setAppSettings} />
+              )}
 
-            {activeTab === 'security' && (
-              <SecurityTab appSettings={appSettings} setAppSettings={setAppSettings} />
-            )}
+              {activeTab === 'security' && (
+                <SecurityTab appSettings={appSettings} setAppSettings={setAppSettings} />
+              )}
 
-            {activeTab === 'ai' && (
-              <AiTab appSettings={appSettings} setAppSettings={setAppSettings} />
-            )}
+              {activeTab === 'ai' && (
+                <AiTab appSettings={appSettings} setAppSettings={setAppSettings} />
+              )}
 
-            {activeTab === 'shortcuts' && (
-              <ShortcutsTab />
-            )}
+              {activeTab === 'shortcuts' && (
+                <ShortcutsTab />
+              )}
 
-            {activeTab === 'storage' && (
-              <StorageTab />
-            )}
+              {activeTab === 'storage' && (
+                <StorageTab />
+              )}
 
-            {activeTab === 'video' && (
-              <VideoTab />
-            )}
+              {activeTab === 'video' && (
+                <VideoTab />
+              )}
 
-            {activeTab === 'backup' && (
-              <BackupTab />
-            )}
+              {activeTab === 'backup' && (
+                <BackupTab />
+              )}
 
-            {activeTab === 'sync' && (
-              <SyncMonitor />
-            )}
+              {activeTab === 'sync' && (
+                <SyncMonitor />
+              )}
 
-            {activeTab === 'sharing' && (
-              <SharingTab />
-            )}
+              {activeTab === 'sharing' && (
+                <SharingTab />
+              )}
+            </Suspense>
 
             {showSaveButton && (
               <div className="pt-8 mt-8 border-t border-white/5 flex items-center justify-end gap-4">

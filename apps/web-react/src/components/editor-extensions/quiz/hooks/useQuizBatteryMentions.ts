@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo, useCallback, useContext } from 'react';
-import { StoreContext, getStoreState } from '../../../../store/useStore';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { usePages } from '../../../../store/useStore';
 import { findAllQuizBatteries } from '../utils/quizExtractor';
 import type { ReferencedBattery } from '../types';
 
@@ -8,8 +8,7 @@ export function useQuizBatteryMentions(
   setChatInput: (val: string) => void,
   currentBatteryTitle?: string
 ) {
-  const ctx = useContext(StoreContext);
-  const state = ctx?.state || getStoreState();
+  const pages = usePages();
   const [availableBatteries, setAvailableBatteries] = useState<ReferencedBattery[]>([]);
   const [attachedBatteries, setAttachedBatteries] = useState<ReferencedBattery[]>([]);
   const [showMentionMenu, setShowMentionMenu] = useState(false);
@@ -21,10 +20,10 @@ export function useQuizBatteryMentions(
   useEffect(() => {
     let isMounted = true;
     const loadBatteries = async () => {
-      if (!state.pages || state.pages.length === 0) return;
+      if (!pages || pages.length === 0) return;
       setIsLoadingBatteries(true);
       try {
-        const batteries = await findAllQuizBatteries(state.pages, currentBatteryTitle);
+        const batteries = await findAllQuizBatteries(pages, currentBatteryTitle);
         if (isMounted) {
           setAvailableBatteries(batteries);
         }
@@ -39,7 +38,7 @@ export function useQuizBatteryMentions(
     return () => {
       isMounted = false;
     };
-  }, [state.pages, currentBatteryTitle]);
+  }, [pages, currentBatteryTitle]);
 
   // Filters available batteries based on query text typed after @
   const filteredBatteries = useMemo(() => {

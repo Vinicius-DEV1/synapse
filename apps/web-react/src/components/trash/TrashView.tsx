@@ -42,7 +42,7 @@ export default function TrashView() {
         />
 
         {/* Sticky Filter Tabs */}
-        <div className="sticky top-0 z-20 px-5 md:px-8 py-3 bg-dark-bg/95 backdrop-blur-md border-b border-white/5">
+        <div className="sticky top-0 z-20 px-5 md:px-8 py-3 bg-dark-bg/95 border-b border-white/5">
           <TrashFilterTabs
             currentFilter={filter}
             onSelectFilter={setFilter}

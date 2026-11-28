@@ -1,11 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { Play, CheckCircle, XCircle, Clock, Calendar, Edit2, Target, Settings, Trash2, Bell, Music, Activity, HelpCircle } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { getLocalIsoDate } from '../../utils/date-utils';
 import type { Session } from './types';
-import FocusHelpModal from './FocusHelpModal';
-import { FocusDeleteModal } from './FocusDeleteModal';
 import { useTranslation } from '../../i18n';
+
+const FocusHelpModal = lazy(() => import('./FocusHelpModal'));
+const FocusDeleteModal = lazy(() =>
+  import('./FocusDeleteModal').then((m) => ({ default: m.FocusDeleteModal }))
+);
 
 interface DashboardProps {
   sessions: Session[];
@@ -42,54 +45,74 @@ const Dashboard: React.FC<DashboardProps> = ({ sessions, onStart, onOpenSettings
     setIsEditingGoal(false);
   };
 
-  // Today's Stats
-  const todayStr = getLocalIsoDate();
-  const todaySessions = sessions.filter(s => 
-    s.created_at && 
-    getLocalIsoDate(new Date(s.created_at)) === todayStr && 
-    s.tag.toLowerCase() !== 'rest'
-  );
-  
-  const todayTotalSessions = todaySessions.length;
-  const todayCompleted = todaySessions.filter(s => s.status === 'completed').length;
-  const todayTime = todaySessions.reduce((acc, s) => acc + (s.status === 'completed' ? s.target_time_minutes : 0), 0);
-  const todaySuccessRate = todayTotalSessions > 0 ? Math.round((todayCompleted / todayTotalSessions) * 100) : 0;
+  // Memoize Today's Stats, Chart Data, and Grouped History so editing goal input or opening modals avoids O(N) date parsing
+  const { todayStr, yesterdayStr, todayTotalSessions, todayCompleted, todayTime, todaySuccessRate } = useMemo(() => {
+    const today = getLocalIsoDate();
+    const yesterdayDate = new Date();
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const yesterday = getLocalIsoDate(yesterdayDate);
+
+    const todaySessions = sessions.filter(s =>
+      s.created_at &&
+      getLocalIsoDate(new Date(s.created_at)) === today &&
+      s.tag.toLowerCase() !== 'rest'
+    );
+
+    const total = todaySessions.length;
+    const completed = todaySessions.filter(s => s.status === 'completed').length;
+    const time = todaySessions.reduce((acc, s) => acc + (s.status === 'completed' ? s.target_time_minutes : 0), 0);
+    const successRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+    return {
+      todayStr: today,
+      yesterdayStr: yesterday,
+      todayTotalSessions: total,
+      todayCompleted: completed,
+      todayTime: time,
+      todaySuccessRate: successRate,
+    };
+  }, [sessions]);
 
   // Goal Progress
   const goalProgress = Math.min((todayTime / dailyGoal) * 100, 100);
 
   // Chart Data (Last 7 Days)
-  const last7Days = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (6 - i));
-    return getLocalIsoDate(d);
-  });
+  const chartData = useMemo(() => {
+    const last7Days = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (6 - i));
+      return getLocalIsoDate(d);
+    });
 
-  const chartData = last7Days.map(dateStr => {
-    const daySessions = sessions.filter(s => 
-      s.created_at && 
-      getLocalIsoDate(new Date(s.created_at)) === dateStr && 
-      s.tag.toLowerCase() !== 'rest'
-    );
-    const focusTime = daySessions.reduce((acc, s) => acc + (s.status === 'completed' ? s.target_time_minutes : 0), 0);
-    const d = new Date(dateStr + 'T00:00:00'); 
-    const dayName = d.toLocaleDateString(language === 'pt-BR' ? 'pt-BR' : 'en-US', { weekday: 'short' });
-    return { name: dayName, "Focus Time (min)": focusTime };
-  });
+    const totalsByDate = new Map<string, number>();
+    for (const s of sessions) {
+      if (!s.created_at || s.status !== 'completed' || s.tag.toLowerCase() === 'rest') continue;
+      const dateStr = getLocalIsoDate(new Date(s.created_at));
+      totalsByDate.set(dateStr, (totalsByDate.get(dateStr) || 0) + s.target_time_minutes);
+    }
+
+    return last7Days.map(dateStr => {
+      const d = new Date(dateStr + 'T00:00:00');
+      const dayName = d.toLocaleDateString(language === 'pt-BR' ? 'pt-BR' : 'en-US', { weekday: 'short' });
+      return { name: dayName, "Focus Time (min)": totalsByDate.get(dateStr) || 0 };
+    });
+  }, [sessions, language]);
 
   // Group History
-  const groupedSessions = sessions.reduce((acc, session) => {
-    if (!session.created_at) return acc;
-    const dateStr = getLocalIsoDate(new Date(session.created_at));
-    if (!acc[dateStr]) acc[dateStr] = [];
-    acc[dateStr].push(session);
-    return acc;
-  }, {} as Record<string, Session[]>);
+  const { groupedSessions, sortedDates } = useMemo(() => {
+    const grouped = sessions.reduce((acc, session) => {
+      if (!session.created_at) return acc;
+      const dateStr = getLocalIsoDate(new Date(session.created_at));
+      if (!acc[dateStr]) acc[dateStr] = [];
+      acc[dateStr].push(session);
+      return acc;
+    }, {} as Record<string, Session[]>);
 
-  const sortedDates = Object.keys(groupedSessions).sort((a, b) => b.localeCompare(a));
-  const yesterdayDate = new Date();
-  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-  const yesterdayStr = getLocalIsoDate(yesterdayDate);
+    return {
+      groupedSessions: grouped,
+      sortedDates: Object.keys(grouped).sort((a, b) => b.localeCompare(a)),
+    };
+  }, [sessions]);
 
   const formatDateHeader = (dateStr: string) => {
     if (dateStr === todayStr) return t('focus.today', 'Hoje');
@@ -127,7 +150,7 @@ const Dashboard: React.FC<DashboardProps> = ({ sessions, onStart, onOpenSettings
           <button onClick={onOpenSettings} className="p-2 text-dark-subtext hover:text-white bg-dark-bg/50 border border-white/5 rounded-lg hover:bg-white/5 transition-colors shrink-0" title={t('focus.settings', 'Settings')}>
             <Settings size={18} />
           </button>
-          <button onClick={onStart} className="bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded-lg font-semibold flex items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95 text-sm shrink-0">
+          <button onClick={onStart} className="bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded-lg font-semibold flex items-center justify-center gap-2 transition-[background-color,transform] hover:scale-105 active:scale-95 text-sm shrink-0">
             <Play size={16} />
             <span className="hidden sm:inline">{t('focus.startSession', 'Start Session')}</span>
             <span className="sm:hidden">{t('focus.start', 'Start')}</span>
@@ -215,11 +238,11 @@ const Dashboard: React.FC<DashboardProps> = ({ sessions, onStart, onOpenSettings
           ) : (
             sortedDates.map(dateStr => (
               <div key={dateStr} className="space-y-1">
-                <h3 className="text-xs font-bold text-dark-subtext tracking-widest uppercase sticky top-0 bg-dark-card/90 backdrop-blur-sm py-1 z-10">
+                <h3 className="text-xs font-bold text-dark-subtext tracking-widest uppercase sticky top-0 bg-dark-card/95 py-1 z-10">
                   {formatDateHeader(dateStr)}
                 </h3>
                 {groupedSessions[dateStr].map((session, i) => (
-                  <div key={session.id || i} className="p-1.5 sm:p-2 rounded-lg bg-dark-bg/50 border border-white/5 flex items-center gap-2 hover:bg-white/[0.02] transition-colors">
+                  <div key={session.id || i} className="cv-auto-row p-1.5 sm:p-2 rounded-lg bg-dark-bg/50 border border-white/5 flex items-center gap-2 hover:bg-white/[0.02] transition-colors">
                     <div className={`p-1 rounded-full shrink-0 ${session.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
                       {session.status === 'completed' ? <CheckCircle size={14} /> : <XCircle size={14} />}
                     </div>
@@ -267,20 +290,26 @@ const Dashboard: React.FC<DashboardProps> = ({ sessions, onStart, onOpenSettings
         </div>
       </div>
 
-      <FocusHelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
+      <Suspense fallback={null}>
+        {isHelpOpen && (
+          <FocusHelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
+        )}
 
-      <FocusDeleteModal
-        isOpen={!!sessionToDelete}
-        title={t('focus.deleteSessionConfirmTitle', 'Excluir Sessão de Foco')}
-        description={t('focus.deleteSessionConfirmDesc', 'Deseja realmente excluir esta sessão de foco do histórico?')}
-        onClose={() => setSessionToDelete(null)}
-        onConfirm={() => {
-          if (sessionToDelete?.id) {
-            onDeleteSession(sessionToDelete.id);
-          }
-          setSessionToDelete(null);
-        }}
-      />
+        {sessionToDelete && (
+          <FocusDeleteModal
+            isOpen={!!sessionToDelete}
+            title={t('focus.deleteSessionConfirmTitle', 'Excluir Sessão de Foco')}
+            description={t('focus.deleteSessionConfirmDesc', 'Deseja realmente excluir esta sessão de foco do histórico?')}
+            onClose={() => setSessionToDelete(null)}
+            onConfirm={() => {
+              if (sessionToDelete?.id) {
+                onDeleteSession(sessionToDelete.id);
+              }
+              setSessionToDelete(null);
+            }}
+          />
+        )}
+      </Suspense>
     </div>
   );
 };

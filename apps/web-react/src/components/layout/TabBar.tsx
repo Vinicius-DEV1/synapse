@@ -1,7 +1,7 @@
-import { memo, useMemo, useCallback, useState, useEffect, useRef, Fragment } from 'react';
+import { memo, useCallback, useState, useEffect, useRef, Fragment } from 'react';
 import { Plus, X, FileText, Library, Settings, PanelLeft, Pin, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useStoreDispatch, useStoreSelector } from '../../store/useStore';
-import type { Tab, Page } from '../../types';
+import type { AppState, Tab } from '../../types';
 import { DndContext, useSensor, useSensors, PointerSensor, useDraggable, useDroppable, type DragEndEvent } from '@dnd-kit/core';
 import { MODULE_CONFIG_MAP } from './sidebar/modules.config';
 import NotificationBell from '../notifications/NotificationBell';
@@ -17,10 +17,8 @@ interface TabItemProps {
   tab: Tab;
   index: number;
   isActive: boolean;
-  page: Page | null | undefined;
   onSelect: (id: string) => void;
   onClose: (e: React.MouseEvent, id: string) => void;
-  onDropTab: (sourceIndex: number, targetIndex: number) => void;
   tabCount: number;
   onContextMenu: (e: React.MouseEvent, tab: Tab) => void;
   compactPinnedTabs?: boolean;
@@ -31,7 +29,6 @@ const TabItem = memo(function TabItem({
   tab,
   index,
   isActive,
-  page,
   onSelect,
   onClose,
   tabCount,
@@ -40,14 +37,28 @@ const TabItem = memo(function TabItem({
   tabMaxWidth = 400,
 }: TabItemProps) {
   const { t } = useI18n();
+  // Subscribe strictly to this tab's page title and icon so unrelated page edits never re-render tabs
+  const pageTitle = useStoreSelector(
+    useCallback(
+      (s: AppState) => (tab.module === 'notes' && tab.pageId ? s.pages.find((p) => p.id === tab.pageId)?.title : undefined),
+      [tab.module, tab.pageId]
+    )
+  );
+  const pageIcon = useStoreSelector(
+    useCallback(
+      (s: AppState) => (tab.module === 'notes' && tab.pageId ? s.pages.find((p) => p.id === tab.pageId)?.icon : undefined),
+      [tab.module, tab.pageId]
+    )
+  );
+
   let title = t('tabBar.newTab');
   let icon = <FileText size={13} className="flex-shrink-0 text-dark-subtext" />;
 
   const moduleConfig = MODULE_CONFIG_MAP.get(tab.module);
 
   if (tab.module === 'notes') {
-    title = page?.title || t('sidebar.newPage');
-    icon = page?.icon ? <span className="text-sm flex-shrink-0">{page.icon}</span> : <FileText size={13} className="flex-shrink-0 text-dark-subtext" />;
+    title = pageTitle || t('sidebar.newPage');
+    icon = pageIcon ? <span className="text-sm flex-shrink-0">{pageIcon}</span> : <FileText size={13} className="flex-shrink-0 text-dark-subtext" />;
   } else if (tab.module === 'library' && tab.bookTitle) {
     title = tab.bookTitle;
     icon = <Library size={13} className="flex-shrink-0 text-dark-subtext" />;
@@ -140,13 +151,36 @@ const TabItem = memo(function TabItem({
   );
 });
 
-export default function TabBar() {
+const AiSidebarToggleButton = memo(function AiSidebarToggleButton() {
+  const dispatch = useStoreDispatch();
+  const showAiSidebar = useStoreSelector((s) => s.showAiSidebar);
+  const { t } = useI18n();
+
+  return (
+    <button
+      onClick={() => dispatch({ type: 'TOGGLE_AI_SIDEBAR' })}
+      className={`group relative flex-shrink-0 flex items-center justify-center p-2 mx-0.5 rounded-lg text-xs font-medium transition-colors ${
+        showAiSidebar
+          ? 'bg-brand-500/20 text-brand-400'
+          : 'text-dark-subtext hover:text-brand-400 hover:bg-brand-500/10'
+      }`}
+      title={t('tabBar.aiAssistant')}
+      aria-label={t('tabBar.aiAssistant')}
+    >
+      <span className="text-[15px] flex items-center justify-center">✨</span>
+
+      {/* Floating tooltip on hover (pure CSS, zero layout shift) */}
+      <span className="pointer-events-none absolute top-full mt-1 left-1/2 -translate-x-1/2 px-2 py-1 bg-dark-card/95 border border-white/10 rounded-md text-[11px] font-medium text-white shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50 whitespace-nowrap">
+        {t('tabBar.aiAssistant')}
+      </span>
+    </button>
+  );
+});
+
+const TabBar = memo(function TabBar() {
   const dispatch = useStoreDispatch();
   const tabs = useStoreSelector((s) => s.tabs);
   const activeTabId = useStoreSelector((s) => s.activeTabId);
-  const pages = useStoreSelector((s) => s.pages);
-  const showAiSidebar = useStoreSelector((s) => s.showAiSidebar);
-  const state = { tabs, activeTabId, pages, showAiSidebar };
   const { t } = useI18n();
   const tabStripRef = useRef<HTMLDivElement>(null);
   const scrollRafRef = useRef<number | null>(null);
@@ -197,16 +231,16 @@ export default function TabBar() {
         scrollRafRef.current = null;
       }
     };
-  }, [checkScroll, state.tabs.length]);
+  }, [checkScroll, tabs.length]);
 
   // Automatically scroll active tab into view when active tab changes
   useEffect(() => {
-    if (!tabStripRef.current || !state.activeTabId) return;
+    if (!tabStripRef.current || !activeTabId) return;
     const activeEl = tabStripRef.current.querySelector<HTMLElement>('[data-active-tab="true"]');
     if (activeEl) {
       activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
     }
-  }, [state.activeTabId]);
+  }, [activeTabId]);
 
   // Translate mouse wheel scrolling into horizontal tab strip scrolling with delta normalization and precise edge clamping
   const handleWheel = useCallback((e: React.WheelEvent<HTMLElement>) => {
@@ -302,14 +336,6 @@ export default function TabBar() {
     window.dispatchEvent(new CustomEvent('caderno-flush-editor'));
     dispatch({ type: 'DUPLICATE_TAB', tabId });
   }, [dispatch]);
-
-  const pageMap = useMemo(() => {
-    const map = new Map<string, Page>();
-    for (const p of state.pages) {
-      map.set(p.id, p);
-    }
-    return map;
-  }, [state.pages]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -408,10 +434,9 @@ export default function TabBar() {
             ref={tabStripRef}
             className="w-full flex items-end h-full min-w-0 overflow-x-auto overflow-y-hidden tab-scrollbar gap-1 px-1"
           >
-            {state.tabs.map((tab, index) => {
-              const isActive = tab.id === state.activeTabId;
-              const page = tab.pageId ? pageMap.get(tab.pageId) || null : null;
-              const isLastPinned = tab.isPinned && !state.tabs[index + 1]?.isPinned;
+            {tabs.map((tab, index) => {
+              const isActive = tab.id === activeTabId;
+              const isLastPinned = tab.isPinned && !tabs[index + 1]?.isPinned;
 
               return (
                 <Fragment key={tab.id}>
@@ -419,16 +444,14 @@ export default function TabBar() {
                     tab={tab}
                     index={index}
                     isActive={isActive}
-                    page={page}
                     onSelect={handleSelectTab}
                     onClose={handleCloseTab}
-                    onDropTab={handleDropTab}
-                    tabCount={state.tabs.length}
+                    tabCount={tabs.length}
                     onContextMenu={handleTabContextMenu}
                     compactPinnedTabs={compactPinnedTabs}
                     tabMaxWidth={tabMaxWidth}
                   />
-                  {isLastPinned && index < state.tabs.length - 1 && (
+                  {isLastPinned && index < tabs.length - 1 && (
                     <div className="h-5 w-px bg-white/10 mx-1 mb-2 self-center flex-shrink-0" />
                   )}
                 </Fragment>
@@ -471,23 +494,7 @@ export default function TabBar() {
           <NotificationBell />
 
           {/* Assistente IA (Ícone com tooltip flutuante ao passar o mouse) */}
-          <button
-            onClick={() => dispatch({ type: 'TOGGLE_AI_SIDEBAR' })}
-            className={`group relative flex-shrink-0 flex items-center justify-center p-2 mx-0.5 rounded-lg text-xs font-medium transition-colors ${
-              state.showAiSidebar 
-                ? 'bg-brand-500/20 text-brand-400' 
-                : 'text-dark-subtext hover:text-brand-400 hover:bg-brand-500/10'
-            }`}
-            title={t('tabBar.aiAssistant')}
-            aria-label={t('tabBar.aiAssistant')}
-          >
-            <span className="text-[15px] flex items-center justify-center">✨</span>
-
-            {/* Floating tooltip on hover (pure CSS, zero layout shift) */}
-            <span className="pointer-events-none absolute top-full mt-1 left-1/2 -translate-x-1/2 px-2 py-1 bg-dark-card/95 border border-white/10 rounded-md text-[11px] font-medium text-white shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50 whitespace-nowrap">
-              {t('tabBar.aiAssistant')}
-            </span>
-          </button>
+          <AiSidebarToggleButton />
 
           {/* Desktop Window Controls (Minimize, Maximize/Restore, Close) */}
           <WindowControls />
@@ -500,8 +507,8 @@ export default function TabBar() {
           x={tabContextMenu.x}
           y={tabContextMenu.y}
           tab={tabContextMenu.tab}
-          tabCount={state.tabs.length}
-          hasTabsToRight={state.tabs.findIndex((t) => t.id === tabContextMenu.tab.id) < state.tabs.length - 1}
+          tabCount={tabs.length}
+          hasTabsToRight={tabs.findIndex((t) => t.id === tabContextMenu.tab.id) < tabs.length - 1}
           onTogglePin={handleTogglePinTab}
           onCloseTab={(id) => {
             triggerHaptic('light');
@@ -517,5 +524,7 @@ export default function TabBar() {
       )}
     </DndContext>
   );
-}
+});
+
+export default TabBar;
 

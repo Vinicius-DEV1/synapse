@@ -81,7 +81,7 @@ describe('SlashMenu component', () => {
   });
 
   it('clamps left coordinate within viewport bounds', () => {
-    const { container } = render(
+    render(
       <SlashMenu
         x={5000}
         y={100}
@@ -91,7 +91,7 @@ describe('SlashMenu component', () => {
       />
     );
 
-    const menu = container.firstChild as HTMLElement;
+    const menu = screen.getByText('Blocos Básicos').parentElement as HTMLElement;
     const leftVal = parseInt(menu.style.left, 10);
     expect(leftVal).toBeLessThan(5000);
   });

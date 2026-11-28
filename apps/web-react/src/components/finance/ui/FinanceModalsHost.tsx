@@ -1,13 +1,24 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import type { Transaction, WishlistItem, Account } from '../../../types';
-import TransactionModal from '../TransactionModal';
-import WishlistModal from '../WishlistModal';
-import PaymentModal from '../PaymentModal';
-import { AccountManagerModal } from './AccountManagerModal';
-import { DeleteTransactionModal } from './DeleteTransactionModal';
-import { WishlistDetailsModal } from './WishlistDetailsModal';
-import { AcquireWishlistModal } from './AcquireWishlistModal';
-import { ConfirmPendingModal } from './ConfirmPendingModal';
+
+const TransactionModal = lazy(() => import('../TransactionModal'));
+const WishlistModal = lazy(() => import('../WishlistModal'));
+const PaymentModal = lazy(() => import('../PaymentModal'));
+const AccountManagerModal = lazy(() =>
+  import('./AccountManagerModal').then((m) => ({ default: m.AccountManagerModal }))
+);
+const DeleteTransactionModal = lazy(() =>
+  import('./DeleteTransactionModal').then((m) => ({ default: m.DeleteTransactionModal }))
+);
+const WishlistDetailsModal = lazy(() =>
+  import('./WishlistDetailsModal').then((m) => ({ default: m.WishlistDetailsModal }))
+);
+const AcquireWishlistModal = lazy(() =>
+  import('./AcquireWishlistModal').then((m) => ({ default: m.AcquireWishlistModal }))
+);
+const ConfirmPendingModal = lazy(() =>
+  import('./ConfirmPendingModal').then((m) => ({ default: m.ConfirmPendingModal }))
+);
 
 interface FinanceModalsHostProps {
   showTxModal: boolean;
@@ -140,7 +151,7 @@ export const FinanceModalsHost = React.memo(function FinanceModalsHost({
   }, [transactions]);
 
   return (
-    <>
+    <Suspense fallback={null}>
       {showTxModal && (
         <TransactionModal
           initialData={txToEdit}
@@ -200,13 +211,15 @@ export const FinanceModalsHost = React.memo(function FinanceModalsHost({
         />
       )}
 
-      <WishlistDetailsModal
-        item={selectedWishlistDetails}
-        onClose={onCloseWishlistDetails}
-        onEdit={onEditWishlistItem}
-        onDelete={onDeleteWishlistItem}
-        onAcquire={onAcquireFromDetails}
-      />
+      {selectedWishlistDetails && (
+        <WishlistDetailsModal
+          item={selectedWishlistDetails}
+          onClose={onCloseWishlistDetails}
+          onEdit={onEditWishlistItem}
+          onDelete={onDeleteWishlistItem}
+          onAcquire={onAcquireFromDetails}
+        />
+      )}
 
       {selectedWishlistToAcquire && (
         <AcquireWishlistModal
@@ -226,6 +239,6 @@ export const FinanceModalsHost = React.memo(function FinanceModalsHost({
           onConfirm={onConfirmPendingTransaction}
         />
       )}
-    </>
+    </Suspense>
   );
 });

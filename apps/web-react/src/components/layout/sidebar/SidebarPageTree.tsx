@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { memo, useState, useMemo, useCallback } from 'react';
 import { Search, Pin, Plus, Upload } from 'lucide-react';
 import { usePages, useStoreSelector, useStoreDispatch } from '../../../store/useStore';
 import SidebarItem from './SidebarItem';
@@ -10,16 +10,16 @@ import { isValidHierarchyMove } from '../../../utils/hierarchy';
 import { triggerToast } from '../../ui/ToastContext';
 import { PinnedSidebarItem } from './PinnedSidebarItem';
 import { RootDroppable } from './RootDroppable';
-import type { Page, Tab } from '../../../types';
+import type { Page } from '../../../types';
 import { useI18n } from '../../../i18n';
 
 interface SidebarPageTreeProps {
   onCreatePage: (parentId: string | null) => Promise<void>;
   onUpdatePage: (id: string, updates: Partial<Page>) => Promise<void>;
-  activeTab: Tab | null;
+  activePageId: string | null;
 }
 
-export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: SidebarPageTreeProps) {
+export const SidebarPageTree = memo(function SidebarPageTree({ onCreatePage, onUpdatePage, activePageId }: SidebarPageTreeProps) {
   const pages = usePages();
   const expandedNodes = useStoreSelector((s) => s.expandedNodes);
   const dispatch = useStoreDispatch();
@@ -62,7 +62,7 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
     return { pinnedPages: pinned, rootPages: roots, childrenMap: map };
   }, [pages]);
 
-  const handleDropPinned = (draggedId: string, targetId: string) => {
+  const handleDropPinned = useCallback((draggedId: string, targetId: string) => {
     if (draggedId === targetId) return;
     
     const currentPinned = [...pinnedPages];
@@ -81,7 +81,7 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
         });
       }
     });
-  };
+  }, [pinnedPages, onUpdatePage, t]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -93,11 +93,11 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
 
   const [activeDragData, setActiveDragData] = useState<{ type: string; page?: Page; pageId?: string } | null>(null);
 
-  const handleDragStart = (e: DragStartEvent) => {
+  const handleDragStart = useCallback((e: DragStartEvent) => {
     setActiveDragData(e.active.data.current as { type: string; page?: Page; pageId?: string } | null);
-  };
+  }, []);
 
-  const handleDragEnd = (e: DragEndEvent) => {
+  const handleDragEnd = useCallback((e: DragEndEvent) => {
     setActiveDragData(null);
     const { active, over } = e;
     if (!over) return;
@@ -138,7 +138,7 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
         triggerToast(t('sidebar.moveToRootError'), 'error');
       });
     }
-  };
+  }, [handleDropPinned, pages, onUpdatePage, dispatch, t]);
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
@@ -156,14 +156,14 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
       <div className="px-3 py-1 flex gap-1">
         <button
           onClick={() => onCreatePage(null)}
-          className="flex-1 flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg text-xs text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-all active:scale-[0.98]"
+          className="flex-1 flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg text-xs text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-[color,background-color,transform] active:scale-[0.98]"
         >
           <Plus size={14} className="text-brand-400" />
           <span>{t('sidebar.newPage')}</span>
         </button>
         <button
           onClick={() => handleImportPage(null)}
-          className="flex items-center justify-center p-1.5 rounded-lg text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-all active:scale-[0.98]"
+          className="flex items-center justify-center p-1.5 rounded-lg text-dark-subtext hover:text-dark-text hover:bg-white/5 transition-[color,background-color,transform] active:scale-[0.98]"
           title={t('sidebar.importPage')}
         >
           <Upload size={14} className="text-brand-400" />
@@ -185,7 +185,7 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
                   key={page.id}
                   page={page}
                   index={index}
-                  activeTab={activeTab}
+                  activePageId={activePageId}
                   onCreatePage={onCreatePage}
                   onUpdatePage={onUpdatePage}
                   childrenMap={childrenMap}
@@ -221,7 +221,7 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
             key={page.id}
             page={page}
             depth={0}
-            activePageId={activeTab?.pageId || null}
+            activePageId={activePageId}
             onCreatePage={onCreatePage}
             onUpdatePage={onUpdatePage}
             isSearchResult={false}
@@ -251,4 +251,4 @@ export function SidebarPageTree({ onCreatePage, onUpdatePage, activeTab }: Sideb
       </DragOverlay>
     </DndContext>
   );
-}
+});

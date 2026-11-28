@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, memo } from 'react';
 import type { Editor } from '@tiptap/core';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import SlashMenu from './SlashMenu';
@@ -124,7 +124,7 @@ interface EditorModalHostProps {
   setImageToDelete: React.Dispatch<React.SetStateAction<{ node: PMNode; pos: number | null } | null>>;
 }
 
-export default function EditorModalHost({
+const EditorModalHost = memo(function EditorModalHost({
   editor,
   pageId,
   pageTitle,
@@ -459,4 +459,6 @@ export default function EditorModalHost({
       </Suspense>
     </>
   );
-}
+});
+
+export default EditorModalHost;

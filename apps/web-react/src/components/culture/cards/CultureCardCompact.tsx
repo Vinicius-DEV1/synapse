@@ -59,7 +59,7 @@ export const CultureCardCompact = React.memo(function CultureCardCompact({
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
 
         {hasNewRelease && (
-          <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full shadow-lg shadow-red-500/50 animate-pulse" />
+          <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full shadow-lg shadow-red-500/50" />
         )}
         {item.is_goal && (
           <div

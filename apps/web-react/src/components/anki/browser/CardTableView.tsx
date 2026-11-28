@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo, useMemo } from 'react';
 import { Volume2, Eye, Edit3, Trash2 } from 'lucide-react';
 import type { Deck, Card } from '../types';
 import { HtmlRenderer } from '../components/HtmlRenderer';
@@ -22,13 +22,21 @@ interface CardTableViewProps {
   handleDeleteCard: (id: string) => void;
 }
 
-export function CardTableView({
+export const CardTableView = memo(function CardTableView({
   groupedCards, filteredCardsLength, selectedIds,
   toggleSelectAll, toggleSelectGroup,
   decks, deckId,
   handleMouseEnter, handleMouseLeave, playAudio,
   setPreviewCard, setEditingCard, handleDeleteCard
 }: CardTableViewProps) {
+  const deckNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const d of decks) {
+      map.set(d.id, d.name);
+    }
+    return map;
+  }, [decks]);
+
   return (
     <table className="w-full text-left border-collapse">
       <thead>
@@ -53,7 +61,7 @@ export function CardTableView({
           const card = group[0];
           const isSelected = group.every(c => selectedIds.has(c.id));
           return (
-          <tr key={card.note_id || card.id} className="hover:bg-dark-card transition-colors group">
+          <tr key={card.note_id || card.id} className="contain-list-item hover:bg-dark-card transition-colors group">
             <td className="p-3">
               <input 
                 type="checkbox" 
@@ -69,7 +77,7 @@ export function CardTableView({
             >
               {card.deck_id !== deckId && (
                 <span className="inline-block mr-2 px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 text-[10px] border border-indigo-500/30 whitespace-nowrap align-middle">
-                  {decks.find(d => d.id === card.deck_id)?.name || 'Subbaralho'}
+                  {deckNameMap.get(card.deck_id) || 'Subbaralho'}
                 </span>
               )}
               {card.tags && card.tags.map((t: string, idx: number) => (
@@ -117,4 +125,4 @@ export function CardTableView({
       </tbody>
     </table>
   );
-}
+});

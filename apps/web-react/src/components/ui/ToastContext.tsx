@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { AlertCircle, CheckCircle2, Info, X } from 'lucide-react';
 
@@ -95,18 +95,20 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
   }, [showToast]);
 
+  const contextValue = useMemo(() => ({ showToast, removeToast }), [showToast, removeToast]);
+
   return (
-    <ToastContext.Provider value={{ showToast, removeToast }}>
+    <ToastContext.Provider value={contextValue}>
       {children}
       <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[9999] flex flex-col gap-2 pointer-events-none">
         {toasts.map((toast) => (
           <div
             key={toast.id}
             className={`
-              pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border backdrop-blur-md text-sm animate-fade-in-up min-w-[280px] max-w-md
-              ${toast.type === 'error' ? 'bg-red-500/10 border-red-500/20 text-red-200' : ''}
-              ${toast.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-200' : ''}
-              ${toast.type === 'info' ? 'bg-brand-500/10 border-brand-500/20 text-brand-200' : ''}
+              pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border bg-dark-card/95 text-sm animate-fade-in-up min-w-[280px] max-w-md
+              ${toast.type === 'error' ? 'border-red-500/30 text-red-200' : ''}
+              ${toast.type === 'success' ? 'border-emerald-500/30 text-emerald-200' : ''}
+              ${toast.type === 'info' ? 'border-brand-500/30 text-brand-200' : ''}
             `}
           >
             {toast.type === 'error' && <AlertCircle size={18} className="text-red-400 shrink-0" />}

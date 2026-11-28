@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense, useCallback } from 'react';
+import { useState, useEffect, lazy, Suspense, useCallback, memo } from 'react';
 import { getStoreState, useStoreDispatch, useStoreSelector } from '../../store/useStore';
 import { useI18n } from '../../i18n';
 import GlobalFocusOverlays from '../focus/GlobalFocusOverlays';
@@ -80,7 +80,7 @@ interface GlobalModalsProps {
   handleCreateLinkedPage: (title: string, parentId?: string | null) => Promise<string | null>;
 }
 
-export function GlobalModals({
+export const GlobalModals = memo(function GlobalModals({
   renamePageId,
   setRenamePageId,
   movePageId,
@@ -465,4 +465,4 @@ export function GlobalModals({
       </Suspense>
     </>
   );
-}
+});

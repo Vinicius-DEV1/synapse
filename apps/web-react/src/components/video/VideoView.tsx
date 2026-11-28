@@ -1,7 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import type { VideoItem } from '../../types';
 import VideoGrid from './VideoGrid';
-import VideoPlayer from './VideoPlayer';
 import type { UploadOptions } from './VideoUploadModal';
 import { resolveVideoUrl, revokeVideoStreamLink, uploadNewVideo, downloadVideoToLocal, deleteVideoAndSync, generateWebVersionTask } from '../../services/video';
 import { useStoreSelector } from '../../store/useStore';
@@ -10,6 +9,8 @@ import { useVideoFolders } from './hooks/useVideoFolders';
 import { VideoViewHeader } from './ui/VideoViewHeader';
 import { VideoViewModals } from './ui/VideoViewModals';
 import { triggerToast } from '../ui/ToastContext';
+
+const VideoPlayer = lazy(() => import('./VideoPlayer'));
 
 export default function VideoView({ tabId }: { tabId?: string }) {
   const [videos, setVideos] = useState<VideoItem[]>([]);
@@ -336,28 +337,30 @@ export default function VideoView({ tabId }: { tabId?: string }) {
       {/* Fullscreen Player */}
       {activeVideoSrc && activeVideo && (
         <div className="absolute inset-0 z-50 bg-black">
-          <VideoPlayer 
-            src={activeVideoSrc} 
-            video={activeVideo}
-            title={activeVideo.title}
-            subtitleContent={activeSubtitle}
-            onClose={() => {
-              if (activeVideoSrcRef.current) {
-                revokeVideoStreamLink(activeVideoSrcRef.current);
-                activeVideoSrcRef.current = null;
-              }
-              setActiveVideo(null);
-              setActiveVideoSrc(null);
-              loadVideos();
-            }}
-            onDurationLoaded={async (dur) => {
-              if (!activeVideo.duration && window.api?.sync) {
-                const updated = { ...activeVideo, duration: dur };
-                await window.api.sync.upsertRow('videos', updated);
-                setVideos(prev => prev.map(v => v.id === updated.id ? updated : v));
-              }
-            }}
-          />
+          <Suspense fallback={null}>
+            <VideoPlayer 
+              src={activeVideoSrc} 
+              video={activeVideo}
+              title={activeVideo.title}
+              subtitleContent={activeSubtitle}
+              onClose={() => {
+                if (activeVideoSrcRef.current) {
+                  revokeVideoStreamLink(activeVideoSrcRef.current);
+                  activeVideoSrcRef.current = null;
+                }
+                setActiveVideo(null);
+                setActiveVideoSrc(null);
+                loadVideos();
+              }}
+              onDurationLoaded={async (dur) => {
+                if (!activeVideo.duration && window.api?.sync) {
+                  const updated = { ...activeVideo, duration: dur };
+                  await window.api.sync.upsertRow('videos', updated);
+                  setVideos(prev => prev.map(v => v.id === updated.id ? updated : v));
+                }
+              }}
+            />
+          </Suspense>
         </div>
       )}
     </div>

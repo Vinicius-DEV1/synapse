@@ -17,7 +17,7 @@ interface CultureCardListProps {
   onOpenLink: (e: React.MouseEvent) => void;
 }
 
-export function CultureCardList({
+export const CultureCardList = React.memo(function CultureCardList({
   item,
   percent,
   isFinished,
@@ -34,7 +34,7 @@ export function CultureCardList({
     <div
       onClick={onClick}
       onContextMenu={onContextMenu}
-      className={`group flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer transition-all duration-200 hover:bg-white/5 ${
+      className={`cv-auto-row group flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer transition-colors duration-200 hover:bg-white/5 ${
         item.is_goal ? 'border border-brand-500/30 bg-brand-500/5' : 'border border-transparent'
       }`}
     >
@@ -55,7 +55,7 @@ export function CultureCardList({
       {/* Title + meta */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          {hasNewRelease && <span className="flex-shrink-0 w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />}
+          {hasNewRelease && <span className="flex-shrink-0 w-1.5 h-1.5 bg-red-500 rounded-full" />}
           {item.is_goal && (
             <span className="flex-shrink-0" title={item.goal_note || 'Objetivo'}>
               <Target size={11} className="text-brand-400" />
@@ -83,7 +83,7 @@ export function CultureCardList({
       <div className="flex-shrink-0 flex items-center gap-3 w-40">
         <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden">
           <div
-            className={`h-full rounded-full transition-all duration-500 ${item.is_goal ? 'bg-brand-400' : 'bg-brand-500/70'}`}
+            className={`h-full rounded-full transition-[width] duration-300 ${item.is_goal ? 'bg-brand-400' : 'bg-brand-500/70'}`}
             style={{ width: `${percent}%` }}
           />
         </div>
@@ -111,4 +111,4 @@ export function CultureCardList({
       </div>
     </div>
   );
-}
+});

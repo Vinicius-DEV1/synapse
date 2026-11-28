@@ -45,7 +45,7 @@ export function DeckToolbar({
 }: DeckToolbarProps) {
   
   return (
-    <div className="sticky top-0 z-20 p-4 border-b border-white/5 flex flex-wrap justify-between items-center gap-4 bg-dark-card/95 backdrop-blur-md shrink-0 shadow-sm">
+    <div className="sticky top-0 z-20 p-4 border-b border-white/5 flex flex-wrap justify-between items-center gap-4 bg-dark-card/95 shrink-0 shadow-sm">
       <div className="flex flex-wrap items-center gap-3 flex-1">
         <button 
           onClick={() => setShowFilters(!showFilters)} 
@@ -62,7 +62,7 @@ export function DeckToolbar({
             placeholder="Buscar cartões..." 
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-dark-card border border-white/5 rounded-xl text-sm text-dark-text focus:outline-none focus:border-white/10 transition-all placeholder-dark-subtext/50"
+            className="w-full pl-10 pr-4 py-2 bg-dark-card border border-white/5 rounded-xl text-sm text-dark-text focus:outline-none focus:border-white/10 transition-colors placeholder-dark-subtext/50"
           />
         </div>
         

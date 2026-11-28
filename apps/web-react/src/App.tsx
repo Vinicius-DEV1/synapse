@@ -7,7 +7,6 @@ import {
   useStoreDispatch,
   useStoreSelector,
   useTabs,
-  usePages,
   getStoreState,
   syncLayoutFromDb,
 } from './store/useStore';
@@ -31,7 +30,7 @@ import { useAppEvents } from './hooks/useAppEvents';
 import { useAppBackPress } from './hooks/useAppBackPress';
 import WindowControls from './components/layout/WindowControls';
 import { I18nProvider } from './i18n';
-import type { Page } from './types';
+import type { AppState, Page } from './types';
 
 // Lazy-load heavy boot-deferred chunks (AiSidebar, AuthScreen, Firebase SyncCoordinator) (P2 + P6)
 const AiSidebar = lazy(() => import('./components/AiSidebar'));
@@ -43,7 +42,6 @@ const SyncCoordinator = lazy(() =>
 interface TabContentItemProps {
   tab: import('./types').Tab;
   isActive: boolean;
-  page: Page | null;
   navDirection: 'forward' | 'backward' | null;
   onUpdateContent: (id: string, content: string, crdtState: string | null, embeddedSaves?: {id: string, content: string}[], senderInstanceId?: string) => Promise<void>;
   onCreatePage: (parentId: string | null) => Promise<void>;
@@ -54,13 +52,20 @@ interface TabContentItemProps {
 const TabContentItem = memo(function TabContentItem({
   tab,
   isActive,
-  page,
   navDirection,
   onUpdateContent,
   onCreatePage,
   onCreateLinkedPage,
   onUpdatePage,
 }: TabContentItemProps) {
+  // Select only this tab's page so unrelated page edits never re-render AppContent or sibling tabs
+  const page = useStoreSelector(
+    useCallback(
+      (s: AppState) => (tab.pageId ? s.pages.find((p) => p.id === tab.pageId) ?? null : null),
+      [tab.pageId]
+    )
+  );
+
   return (
     <div 
       className={`absolute inset-0 flex flex-col ${isActive ? 'z-10 opacity-100 pointer-events-auto visible' : 'z-0 opacity-0 pointer-events-none invisible'}`}
@@ -92,7 +97,6 @@ const TabContentItem = memo(function TabContentItem({
   if (next.isActive) {
     return (
       prev.tab === next.tab &&
-      prev.page === next.page &&
       prev.navDirection === next.navDirection &&
       prev.onUpdateContent === next.onUpdateContent &&
       prev.onCreatePage === next.onCreatePage &&
@@ -164,7 +168,6 @@ function AppContent() {
   const dispatch = useStoreDispatch();
   const tabs = useTabs();
   const activeTabId = useStoreSelector((s) => s.activeTabId);
-  const pages = usePages();
   const isReadingModeFullScreen = useStoreSelector((s) => s.isReadingModeFullScreen);
   const navDirection = useStoreSelector((s) => s.navDirection);
   const moduleKeys = useStoreSelector((s) => s.moduleKeys);
@@ -177,14 +180,6 @@ function AppContent() {
   const activeTab = useMemo(() => tabs.find((t) => t.id === activeTabId) || tabs[0], [tabs, activeTabId]);
   const activeModule = activeTab?.module;
   const isReadingBook = activeTab?.module === 'library' && Boolean(activeTab?.bookTitle);
-
-  const pagesMap = useMemo(() => {
-    const map = new Map<string, Page>();
-    for (const p of pages) {
-      map.set(p.id, p);
-    }
-    return map;
-  }, [pages]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -312,20 +307,18 @@ function AppContent() {
 
   // If user switches away from a book in the library, ensure reading mode fullscreen is exited
   useEffect(() => {
-    const currentTab = tabs.find(t => t.id === activeTabId);
-    if (!currentTab || currentTab.module !== 'library' || !currentTab.bookTitle) {
+    if (!activeTab || activeTab.module !== 'library' || !activeTab.bookTitle) {
       if (isReadingModeFullScreen) {
         dispatch({ type: 'SET_READING_MODE_FULLSCREEN', isFullScreen: false });
       }
     }
-  }, [activeTabId, tabs, isReadingModeFullScreen, dispatch]);
+  }, [activeTab, isReadingModeFullScreen, dispatch]);
 
   const pageHistoryRef = useRef<string[]>([]);
   const lastPageIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    const currentTab = tabs.find(t => t.id === activeTabId);
-    const currentPageId = currentTab?.pageId || null;
+    const currentPageId = activeTab?.pageId || null;
     if (currentPageId && lastPageIdRef.current && lastPageIdRef.current !== currentPageId) {
       pageHistoryRef.current.push(lastPageIdRef.current);
       if (pageHistoryRef.current.length > 30) {
@@ -333,7 +326,7 @@ function AppContent() {
       }
     }
     lastPageIdRef.current = currentPageId;
-  }, [activeTabId, tabs]);
+  }, [activeTab]);
 
   useAppBackPress(getStoreState, dispatch, floatingPageId, setFloatingPageId, pageHistoryRef);
 
@@ -395,24 +388,18 @@ function AppContent() {
 
         {/* Main Area */}
         <div className="flex-1 overflow-hidden relative">
-          {tabs.map((tab) => {
-            const isActive = tab.id === activeTabId;
-            const page = tab.pageId ? pagesMap.get(tab.pageId) || null : null;
-            
-            return (
-              <TabContentItem
-                key={tab.id}
-                tab={tab}
-                isActive={isActive}
-                page={page}
-                navDirection={navDirection}
-                onUpdateContent={handleUpdateContent}
-                onCreatePage={handleCreatePage}
-                onCreateLinkedPage={handleCreateLinkedPage}
-                onUpdatePage={handleUpdatePage}
-              />
-            );
-          })}
+          {tabs.map((tab) => (
+            <TabContentItem
+              key={tab.id}
+              tab={tab}
+              isActive={tab.id === activeTabId}
+              navDirection={navDirection}
+              onUpdateContent={handleUpdateContent}
+              onCreatePage={handleCreatePage}
+              onCreateLinkedPage={handleCreateLinkedPage}
+              onUpdatePage={handleUpdatePage}
+            />
+          ))}
         </div>
       </div>
 

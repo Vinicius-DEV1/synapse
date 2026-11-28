@@ -57,7 +57,7 @@ export function PracticeCallControls({
 
         {/* Mode Switcher Toggle (if interview session) */}
         {interviewConfig && (
-          <div className="pointer-events-auto flex items-center gap-1 p-1 bg-white/5 border border-white/[0.08] rounded-xl backdrop-blur-md shadow-lg">
+          <div className="pointer-events-auto flex items-center gap-1 p-1 bg-dark-card/90 border border-white/[0.08] rounded-xl shadow-lg">
             <button
               onClick={() => setViewMode('avatar')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
@@ -116,12 +116,12 @@ export function PracticeCallControls({
           </div>
         ) : (
           <div className="relative flex items-center justify-center w-48 h-48 mb-8">
-            <div className={`absolute inset-0 rounded-full blur-3xl transition-all duration-700 ${isRecording ? 'bg-brand-500/40 scale-150 opacity-100' : isPlaying ? 'bg-sky-500/40 scale-125 opacity-90' : isConnected ? 'bg-white/10 scale-110 opacity-50 animate-pulse' : 'bg-transparent scale-75 opacity-0'}`}></div>
+            <div className={`absolute inset-0 rounded-full transition-[transform,opacity] duration-500 ${isRecording ? 'bg-[radial-gradient(circle,rgba(139,92,246,0.35)_0%,transparent_70%)] scale-150 opacity-100' : isPlaying ? 'bg-[radial-gradient(circle,rgba(14,165,233,0.35)_0%,transparent_70%)] scale-125 opacity-90' : isConnected ? 'bg-[radial-gradient(circle,rgba(255,255,255,0.12)_0%,transparent_70%)] scale-110 opacity-50' : 'bg-transparent scale-75 opacity-0'}`}></div>
             
-            <div className={`relative z-10 w-32 h-32 rounded-full flex items-center justify-center transition-all duration-500 overflow-hidden backdrop-blur-xl border border-white/20 ${
-              isRecording ? 'bg-white/10 shadow-[0_0_80px_rgba(168,85,247,0.5)] scale-110' : 
-              isPlaying ? 'bg-white/10 shadow-[0_0_80px_rgba(14,165,233,0.5)] scale-105' :
-              isConnected ? 'bg-white/5 shadow-[0_0_40px_rgba(255,255,255,0.05)]' : 
+            <div className={`relative z-10 w-32 h-32 rounded-full flex items-center justify-center transition-[transform,background-color,border-color,box-shadow] duration-300 overflow-hidden border border-white/20 ${
+              isRecording ? 'bg-white/10 shadow-[0_0_50px_rgba(168,85,247,0.45)] scale-110' : 
+              isPlaying ? 'bg-white/10 shadow-[0_0_50px_rgba(14,165,233,0.45)] scale-105' :
+              isConnected ? 'bg-white/5 shadow-[0_0_30px_rgba(255,255,255,0.05)]' : 
               'bg-transparent border-white/5'
             }`}>
               {isRecording ? (
@@ -130,7 +130,7 @@ export function PracticeCallControls({
                     <div 
                       key={i}
                       ref={el => { visualizerRefs.current[i] = el; }}
-                      className="w-1.5 bg-gradient-to-t from-brand-300 to-brand-100 rounded-full transition-all duration-[50ms]" 
+                      className="w-1.5 bg-gradient-to-t from-brand-300 to-brand-100 rounded-full transition-[height] duration-[50ms]" 
                       style={{ height: '12px' }}
                     ></div>
                   ))}
@@ -141,7 +141,7 @@ export function PracticeCallControls({
                     <div 
                       key={i}
                       ref={el => { visualizerRefs.current[i] = el; }}
-                      className="w-1.5 bg-gradient-to-t from-sky-300 to-sky-100 rounded-full transition-all duration-[50ms]" 
+                      className="w-1.5 bg-gradient-to-t from-sky-300 to-sky-100 rounded-full transition-[height] duration-[50ms]" 
                       style={{ height: '12px' }}
                     ></div>
                   ))}
@@ -154,7 +154,7 @@ export function PracticeCallControls({
                     <div 
                       key={i}
                       ref={el => { visualizerRefs.current[i] = el; }}
-                      className="w-1.5 bg-white/40 rounded-full transition-all duration-[50ms]" 
+                      className="w-1.5 bg-white/40 rounded-full transition-[height] duration-[50ms]" 
                       style={{ height: '12px' }}
                     ></div>
                   ))}
@@ -180,7 +180,7 @@ export function PracticeCallControls({
           <p className="text-sm text-dark-subtext mb-4">Estabelecendo comunicação segura de baixa latência...</p>
         )}
 
-        <div className="flex flex-col items-center gap-4 p-4 rounded-3xl bg-white/5 border border-white/[0.06] backdrop-blur-2xl shadow-2xl w-full">
+        <div className="flex flex-col items-center gap-4 p-4 rounded-3xl bg-dark-card/90 border border-white/[0.06] shadow-2xl w-full">
           {isConnected && (
             <>
               {interviewConfig ? (
@@ -209,7 +209,7 @@ export function PracticeCallControls({
           
           <button 
             onClick={onEndCall} 
-            className="w-full py-3 px-8 rounded-xl bg-red-500/10 hover:bg-red-500 hover:text-white text-red-500 flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98]"
+            className="w-full py-3 px-8 rounded-xl bg-red-500/10 hover:bg-red-500 hover:text-white text-red-500 flex items-center justify-center gap-2 transition-[background-color,color,transform] hover:scale-[1.02] active:scale-[0.98]"
             title="Encerrar Ligação"
           >
             <PhoneOff size={18} />
@@ -219,7 +219,7 @@ export function PracticeCallControls({
       </div>
       
       {error && !isDismissed && (
-        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 px-4 py-2 bg-red-500/15 border border-red-500/30 rounded-2xl text-red-200 text-xs sm:text-sm font-medium shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-top-2 max-w-lg text-center">
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 px-4 py-2 bg-red-950/95 border border-red-500/30 rounded-2xl text-red-200 text-xs sm:text-sm font-medium shadow-2xl animate-in fade-in slide-in-from-top-2 max-w-lg text-center">
           <AlertCircle size={16} className="text-red-400 shrink-0" />
           <span className="truncate">{error}</span>
           <button

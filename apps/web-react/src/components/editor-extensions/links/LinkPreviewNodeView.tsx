@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, useContext } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Copy, Check, FileArchive, ExternalLink, Eye } from 'lucide-react';
 import { NodeSelection } from '@tiptap/pm/state';
 import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
@@ -11,8 +11,8 @@ import { fetchLinkMetadata } from './fetchLinkMetadata';
 import LinkPreviewCard from './LinkPreviewCard';
 import type { LinkPreviewAttrs } from './types';
 import { triggerToast } from '../../ui/ToastContext';
-import { StoreContext, getNotesKey, getStoreState } from '../../../store/useStore';
-import type { Action } from '../../../types';
+import { useStoreDispatch, useStoreSelector, getNotesKey, getStoreState } from '../../../store/useStore';
+import type { AppState } from '../../../types';
 import { encryptAndSaveScrap } from '../../../services/scrap/scrap-storage';
 import { captureWebScrap } from '../../../services/scrap/scrap-service';
 import { platform } from '../../../services/platform';
@@ -69,11 +69,13 @@ export const LinkPreviewComponent = (props: NodeViewProps) => {
   const [showDuplicatesModal, setShowDuplicatesModal] = useState(false);
   const mountedRef = useRef(true);
 
-  const storeCtx = useContext(StoreContext);
-  const state = storeCtx?.state || getStoreState();
-  const dispatch = storeCtx?.dispatch || ((_action: Action) => {});
-  const activeTab = state?.tabs?.find((t) => t.id === state?.activeTabId);
-  const currentPageId = activeTab?.pageId || null;
+  const dispatch = useStoreDispatch();
+  const currentPageId = useStoreSelector(
+    useCallback((s: AppState) => {
+      const tab = s.tabs.find((t) => t.id === s.activeTabId);
+      return tab?.pageId || null;
+    }, [])
+  );
   const { duplicatePages } = useLinkDuplicates(url, currentPageId);
 
   const handleNavigateToPage = useCallback(

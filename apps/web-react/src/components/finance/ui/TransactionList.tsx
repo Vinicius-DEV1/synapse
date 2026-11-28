@@ -344,7 +344,7 @@ export const TransactionList = React.memo(({
           )}
 
           {Object.entries(groupedTransactions).map(([month, monthTxs]) => (
-            <div key={month} className="cv-auto-card bg-dark-card border border-white/[0.06] rounded-xl p-4 sm:p-5 flex flex-col gap-2.5 shadow-sm">
+            <div key={month} className="bg-dark-card border border-white/[0.06] rounded-xl p-4 sm:p-5 flex flex-col gap-2.5 shadow-sm">
               <div className="flex items-center justify-between border-b border-white/5 pb-2">
                 <h3 className="text-sm font-semibold text-dark-text tracking-tight">{month}</h3>
                 <span className="text-xs font-normal text-dark-subtext">
@@ -392,7 +392,7 @@ export const TransactionList = React.memo(({
                                 </div>
                                 <div className="h-1.5 w-full bg-dark-bg rounded-full overflow-hidden border border-white/5">
                                   <div
-                                    className={`h-full rounded-full transition-all ${tx.is_paid ? 'bg-emerald-500' : 'bg-brand-500'}`}
+                                    className={`h-full rounded-full transition-[width] ${tx.is_paid ? 'bg-emerald-500' : 'bg-brand-500'}`}
                                     style={{ width: `${progress}%` }}
                                   />
                                 </div>

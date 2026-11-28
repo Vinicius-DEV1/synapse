@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { Folder, MoreVertical, Pencil, Trash2, Plus, BookOpen, Layers } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import type { LibraryBook, LibraryCollection } from '../../../types';
@@ -44,7 +44,7 @@ function MiniCover({ book }: { book: LibraryBook }) {
   );
 }
 
-export function LibraryCollectionCard({
+export const LibraryCollectionCard = memo(function LibraryCollectionCard({
   collection,
   books,
   onSelect,
@@ -63,7 +63,7 @@ export function LibraryCollectionCard({
   return (
     <div
       onClick={() => onSelect(collection.id)}
-      className="group relative flex flex-col rounded-xl border border-white/5 bg-dark-card hover:border-brand-400/40 hover:shadow-xl hover:shadow-brand-500/5 transition-all duration-300 cursor-pointer overflow-hidden"
+      className="group relative flex flex-col rounded-xl border border-white/5 bg-dark-card hover:border-brand-400/40 hover:shadow-xl hover:shadow-brand-500/5 transition-[border-color,box-shadow] duration-200 cursor-pointer overflow-hidden"
     >
       {/* Visual Cover Stack / Canvas */}
       <div className="relative aspect-[3/4] bg-black/40 overflow-hidden select-none">
@@ -101,12 +101,12 @@ export function LibraryCollectionCard({
           /* Two Books Fan */
           <div className="absolute inset-0">
             {/* Book 2 (behind, tilted right) */}
-            <div className="absolute top-3 right-4 left-8 bottom-5 rotate-[6deg] opacity-75 group-hover:rotate-[8deg] group-hover:translate-x-1 transition-all duration-300 rounded-md overflow-hidden shadow-lg border border-white/10">
+            <div className="absolute top-3 right-4 left-8 bottom-5 rotate-[6deg] opacity-75 group-hover:rotate-[8deg] group-hover:translate-x-1 transition-transform duration-300 rounded-md overflow-hidden shadow-lg border border-white/10">
               <MiniCover book={previewBooks[1]} />
               <div className="absolute inset-y-0 left-0 w-2 bg-gradient-to-r from-black/30 to-transparent pointer-events-none" />
             </div>
             {/* Book 1 (front, straight) */}
-            <div className="absolute top-5 left-5 right-7 bottom-3 rotate-0 opacity-100 group-hover:-translate-y-1 transition-all duration-300 rounded-lg overflow-hidden shadow-2xl border border-white/15">
+            <div className="absolute top-5 left-5 right-7 bottom-3 rotate-0 opacity-100 group-hover:-translate-y-1 transition-transform duration-300 rounded-lg overflow-hidden shadow-2xl border border-white/15">
               <MiniCover book={previewBooks[0]} />
               <div className="absolute inset-y-0 left-0 w-2.5 bg-gradient-to-r from-black/40 to-transparent pointer-events-none" />
             </div>
@@ -115,17 +115,17 @@ export function LibraryCollectionCard({
           /* Three Books Stack Deck */
           <div className="absolute inset-0">
             {/* Book 3 (left tilt) */}
-            <div className="absolute top-3 left-4 right-8 bottom-6 -rotate-6 opacity-65 group-hover:-rotate-8 group-hover:-translate-x-1 transition-all duration-300 rounded-md overflow-hidden shadow-md border border-white/10">
+            <div className="absolute top-3 left-4 right-8 bottom-6 -rotate-6 opacity-65 group-hover:-rotate-8 group-hover:-translate-x-1 transition-transform duration-300 rounded-md overflow-hidden shadow-md border border-white/10">
               <MiniCover book={previewBooks[2]} />
               <div className="absolute inset-y-0 left-0 w-2 bg-gradient-to-r from-black/30 to-transparent pointer-events-none" />
             </div>
             {/* Book 2 (right tilt) */}
-            <div className="absolute top-2 right-4 left-8 bottom-5 rotate-6 opacity-80 group-hover:rotate-8 group-hover:translate-x-1 transition-all duration-300 rounded-md overflow-hidden shadow-lg border border-white/10">
+            <div className="absolute top-2 right-4 left-8 bottom-5 rotate-6 opacity-80 group-hover:rotate-8 group-hover:translate-x-1 transition-transform duration-300 rounded-md overflow-hidden shadow-lg border border-white/10">
               <MiniCover book={previewBooks[1]} />
               <div className="absolute inset-y-0 left-0 w-2 bg-gradient-to-r from-black/30 to-transparent pointer-events-none" />
             </div>
             {/* Book 1 (front centered) */}
-            <div className="absolute top-5 left-6 right-6 bottom-3 rotate-0 opacity-100 group-hover:-translate-y-1 transition-all duration-300 rounded-lg overflow-hidden shadow-2xl border border-white/20">
+            <div className="absolute top-5 left-6 right-6 bottom-3 rotate-0 opacity-100 group-hover:-translate-y-1 transition-transform duration-300 rounded-lg overflow-hidden shadow-2xl border border-white/20">
               <MiniCover book={previewBooks[0]} />
               <div className="absolute inset-y-0 left-0 w-2.5 bg-gradient-to-r from-black/40 to-transparent pointer-events-none" />
             </div>
@@ -141,7 +141,7 @@ export function LibraryCollectionCard({
         </div>
 
         <div className="absolute top-2.5 right-2.5 z-10 flex items-center gap-1">
-          <span className="px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-md border border-white/10 text-[10px] font-semibold text-white/90 shadow-sm flex items-center gap-1 pointer-events-none">
+          <span className="px-2 py-0.5 rounded-md bg-black/75 border border-white/10 text-[10px] font-semibold text-white/90 shadow-sm flex items-center gap-1 pointer-events-none">
             <Layers size={10} style={{ color }} />
             {count} {count === 1 ? 'livro' : 'livros'}
           </span>
@@ -151,7 +151,7 @@ export function LibraryCollectionCard({
             <DropdownMenu.Trigger asChild>
               <button
                 onClick={(e) => e.stopPropagation()}
-                className="p-1 rounded-md bg-black/50 backdrop-blur-md text-white/60 hover:text-white hover:bg-black/80 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                className="p-1 rounded-md bg-black/70 text-white/60 hover:text-white hover:bg-black/90 transition-[color,background-color,opacity] opacity-0 group-hover:opacity-100 focus:opacity-100"
                 title="Opções da coleção"
               >
                 <MoreVertical size={14} />
@@ -216,7 +216,7 @@ export function LibraryCollectionCard({
       </div>
     </div>
   );
-}
+});
 
 interface NewCollectionCardProps {
   onClick: () => void;
@@ -235,10 +235,10 @@ export function NewCollectionCard({ onClick }: NewCollectionCardProps) {
           onClick();
         }
       }}
-      className="group flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-white/10 hover:border-brand-400/50 cursor-pointer transition-all duration-300 hover:bg-brand-500/5 aspect-[3/4] select-none focus:outline-none focus:ring-2 focus:ring-brand-500/50"
+      className="group flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-white/10 hover:border-brand-400/50 cursor-pointer transition-[border-color,background-color] duration-200 hover:bg-brand-500/5 aspect-[3/4] select-none focus:outline-none focus:ring-2 focus:ring-brand-500/50"
     >
       <div className="flex flex-col items-center gap-2.5 text-dark-subtext group-hover:text-brand-400 transition-colors">
-        <div className="p-3.5 rounded-full bg-white/5 group-hover:bg-brand-500/10 transition-all group-hover:scale-110 duration-300">
+        <div className="p-3.5 rounded-full bg-white/5 group-hover:bg-brand-500/10 transition-[background-color,transform] group-hover:scale-110 duration-200">
           <Plus size={26} />
         </div>
         <span className="text-sm font-medium">Nova Coleção</span>

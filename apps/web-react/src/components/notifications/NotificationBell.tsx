@@ -25,7 +25,7 @@ export default function NotificationBell() {
         <div className="relative flex items-center justify-center">
           <Bell size={16} />
           {unreadCount > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 min-w-[15px] h-[15px] px-1 bg-brand-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center border border-dark-bg animate-pulse">
+            <span className="absolute -top-1.5 -right-1.5 min-w-[15px] h-[15px] px-1 bg-brand-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center border border-dark-bg">
               {unreadCount > 99 ? '99+' : unreadCount}
             </span>
           )}

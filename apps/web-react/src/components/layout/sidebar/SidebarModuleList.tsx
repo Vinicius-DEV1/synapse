@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { MAIN_MODULES, SPECIAL_MODULES } from './modules.config';
 import type { ModuleConfig } from './modules.config';
 import { useStoreSelector, useStoreDispatch } from '../../../store/useStore';
@@ -14,7 +15,7 @@ interface SidebarModuleListProps {
 // extending Tab['module'] for navigation.
 type ModuleId = Tab['module'] | 'settings';
 
-export function SidebarModuleList({ isCollapsedView, onModuleSelect }: SidebarModuleListProps) {
+export const SidebarModuleList = memo(function SidebarModuleList({ isCollapsedView, onModuleSelect }: SidebarModuleListProps) {
   const dispatch = useStoreDispatch();
   const { t } = useI18n();
   const activeTabId = useStoreSelector(
@@ -116,4 +117,4 @@ export function SidebarModuleList({ isCollapsedView, onModuleSelect }: SidebarMo
       )}
     </>
   );
-}
+});

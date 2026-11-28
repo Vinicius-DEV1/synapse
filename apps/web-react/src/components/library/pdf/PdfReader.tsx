@@ -36,7 +36,7 @@ interface PdfReaderProps {
 
 export default function PdfReader({ book, onBack, onUpdateBook }: PdfReaderProps) {
   const dispatch = useStoreDispatch();
-  const settings = getSettings();
+  const settings = useMemo(() => getSettings(), []);
 
   useTimeTracker({
     itemId: book.id,

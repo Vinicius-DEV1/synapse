@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { Play, Plus, Settings, Layers, ChevronDown, ChevronRight } from 'lucide-react';
 import { useTranslation } from '../../i18n';
 import type { Deck, DeckTreeNode } from './types';
@@ -14,7 +14,7 @@ interface DeckListItemProps {
   onStudyDeck: (deckId: string) => void;
 }
 
-export const DeckListItem: React.FC<DeckListItemProps> = ({
+export const DeckListItem: React.FC<DeckListItemProps> = memo(({
   deck,
   depth = 0,
   collapsedDecks,
@@ -96,7 +96,7 @@ export const DeckListItem: React.FC<DeckListItemProps> = ({
             </button>
             <button
               onClick={() => onStudyDeck(deck.id)}
-              className="flex items-center gap-2 bg-indigo-600/90 hover:bg-indigo-500 text-white px-4 py-1.5 rounded-lg text-sm transition-all font-medium"
+              className="flex items-center gap-2 bg-indigo-600/90 hover:bg-indigo-500 text-white px-4 py-1.5 rounded-lg text-sm transition-colors font-medium"
             >
               <Play className="w-3 h-3 fill-white" />
               {t('anki.study', 'Estudar')}
@@ -121,4 +121,4 @@ export const DeckListItem: React.FC<DeckListItemProps> = ({
         ))}
     </div>
   );
-};
+});

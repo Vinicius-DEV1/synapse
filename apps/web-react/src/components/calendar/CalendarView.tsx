@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import CalendarGrid from './CalendarGrid';
 import TaskFeed from './TaskFeed';
-import EventModal from './EventModal';
-import DayModal from './DayModal';
 import type { CalendarEvent } from '../../types';
 import { triggerToast } from '../ui/ToastContext';
 import { useTranslation } from '../../i18n';
+
+const EventModal = lazy(() => import('./EventModal'));
+const DayModal = lazy(() => import('./DayModal'));
 
 export default function CalendarView() {
   const { t } = useTranslation();
@@ -228,39 +229,41 @@ export default function CalendarView() {
         </div>
       </div>
 
-      {isModalOpen && (
-        <EventModal
-          event={editingEvent}
-          initialDate={selectedDay || undefined}
-          onSave={handleSaveEvent}
-          onClose={() => {
-            setIsModalOpen(false);
-            setEditingEvent(null);
-            if (!editingEvent) setSelectedDay(null); // Keep DayModal open if we just cancelled creating a new event from DayModal
-          }}
-          onDelete={editingEvent ? (deleteAll) => { handleDeleteEvent(editingEvent.id, deleteAll); setIsModalOpen(false); setEditingEvent(null); } : undefined}
-        />
-      )}
+      <Suspense fallback={null}>
+        {isModalOpen && (
+          <EventModal
+            event={editingEvent}
+            initialDate={selectedDay || undefined}
+            onSave={handleSaveEvent}
+            onClose={() => {
+              setIsModalOpen(false);
+              setEditingEvent(null);
+              if (!editingEvent) setSelectedDay(null); // Keep DayModal open if we just cancelled creating a new event from DayModal
+            }}
+            onDelete={editingEvent ? (deleteAll) => { handleDeleteEvent(editingEvent.id, deleteAll); setIsModalOpen(false); setEditingEvent(null); } : undefined}
+          />
+        )}
 
-      {selectedDay && !isModalOpen && (
-        <DayModal
-          date={selectedDay}
-          events={events}
-          onClose={() => setSelectedDay(null)}
-          onNewEvent={() => setIsModalOpen(true)}
-          onEditEvent={(ev) => {
-            setEditingEvent(ev);
-            setIsModalOpen(true);
-          }}
-          onToggleTask={async (event) => {
-            if (window.api?.calendar) {
-              const newStatus = event.status === 'completed' ? 'pending' : 'completed';
-              await window.api.calendar.updateEvent(event.id, { status: newStatus });
-              loadEvents();
-            }
-          }}
-        />
-      )}
+        {selectedDay && !isModalOpen && (
+          <DayModal
+            date={selectedDay}
+            events={events}
+            onClose={() => setSelectedDay(null)}
+            onNewEvent={() => setIsModalOpen(true)}
+            onEditEvent={(ev) => {
+              setEditingEvent(ev);
+              setIsModalOpen(true);
+            }}
+            onToggleTask={async (event) => {
+              if (window.api?.calendar) {
+                const newStatus = event.status === 'completed' ? 'pending' : 'completed';
+                await window.api.calendar.updateEvent(event.id, { status: newStatus });
+                loadEvents();
+              }
+            }}
+          />
+        )}
+      </Suspense>
     </div>
   );
 }

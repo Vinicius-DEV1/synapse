@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { memo, useMemo, useCallback } from 'react';
 import { usePages, useStoreDispatch } from '../../store/useStore';
 import { useHomeDashboard } from './hooks/useHomeDashboard';
 import { HomeQuickActions } from './ui/HomeQuickActions';
@@ -7,7 +7,7 @@ import { HomePagesSection } from './ui/HomePagesSection';
 import { useI18n } from '../../i18n';
 import type { Page } from '../../types';
 
-export default function HomeView({ tabId, isActive = true }: { tabId: string; isActive?: boolean }) {
+const HomeView = memo(function HomeView({ tabId, isActive = true }: { tabId: string; isActive?: boolean }) {
   const pages = usePages();
   const dispatch = useStoreDispatch();
   const { t, language } = useI18n();
@@ -40,12 +40,22 @@ export default function HomeView({ tabId, isActive = true }: { tabId: string; is
     };
   }, [pages]);
 
-  const handleOpenPage = (pageId: string) => {
+  const formattedToday = useMemo(
+    () =>
+      new Date().toLocaleDateString(language === 'pt-BR' ? 'pt-BR' : 'en-US', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+      }),
+    [language]
+  );
+
+  const handleOpenPage = useCallback((pageId: string) => {
     dispatch({ type: 'UPDATE_TAB_MODULE', tabId, module: 'notes' });
     dispatch({ type: 'NAVIGATE_IN_TAB', pageId });
-  };
+  }, [dispatch, tabId]);
 
-  const handleNewPage = async () => {
+  const handleNewPage = useCallback(async () => {
     if (!window.api) return;
     try {
       const page = await window.api.createPage({ parentId: null });
@@ -55,7 +65,20 @@ export default function HomeView({ tabId, isActive = true }: { tabId: string; is
     } catch (e) {
       console.error('[HomeView] Failed to create page:', e);
     }
-  };
+  }, [dispatch, tabId]);
+
+  const handleOpenCalendar = useCallback(
+    () => dispatch({ type: 'UPDATE_TAB_MODULE', tabId, module: 'calendar' }),
+    [dispatch, tabId]
+  );
+  const handleOpenAnki = useCallback(
+    () => dispatch({ type: 'UPDATE_TAB_MODULE', tabId, module: 'anki' }),
+    [dispatch, tabId]
+  );
+  const handleOpenFiles = useCallback(
+    () => dispatch({ type: 'UPDATE_TAB_MODULE', tabId, module: 'files' }),
+    [dispatch, tabId]
+  );
 
   return (
     <div className="flex-1 overflow-y-auto bg-dark-bg p-4 sm:p-6 md:p-8 smooth-scroll-container">
@@ -65,12 +88,7 @@ export default function HomeView({ tabId, isActive = true }: { tabId: string; is
           <div>
             <h1 className="text-3xl font-bold text-white mb-2">{greeting}!</h1>
             <p className="text-dark-subtext">
-              {t('home.todayIs')}{' '}
-              {new Date().toLocaleDateString(language === 'pt-BR' ? 'pt-BR' : 'en-US', {
-                weekday: 'long',
-                day: 'numeric',
-                month: 'long',
-              })}
+              {t('home.todayIs')} {formattedToday}
             </p>
           </div>
         </div>
@@ -78,9 +96,9 @@ export default function HomeView({ tabId, isActive = true }: { tabId: string; is
         {/* Quick Actions */}
         <HomeQuickActions
           onNewPage={handleNewPage}
-          onOpenCalendar={() => dispatch({ type: 'UPDATE_TAB_MODULE', tabId, module: 'calendar' })}
-          onOpenAnki={() => dispatch({ type: 'UPDATE_TAB_MODULE', tabId, module: 'anki' })}
-          onOpenFiles={() => dispatch({ type: 'UPDATE_TAB_MODULE', tabId, module: 'files' })}
+          onOpenCalendar={handleOpenCalendar}
+          onOpenAnki={handleOpenAnki}
+          onOpenFiles={handleOpenFiles}
           dueCardsCount={dueCardsCount}
         />
 
@@ -107,4 +125,6 @@ export default function HomeView({ tabId, isActive = true }: { tabId: string; is
       </div>
     </div>
   );
-}
+});
+
+export default HomeView;

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import {
   Plus,
   Loader2,
@@ -21,8 +21,11 @@ import { TransactionList } from './ui/TransactionList';
 import { LoansTab } from './ui/LoansTab';
 import { WishlistTab } from './ui/WishlistTab';
 import { FinanceModalsHost } from './ui/FinanceModalsHost';
-import { FinanceHelpModal } from './FinanceHelpModal';
 import { PeriodSelector, type PeriodFilter } from './ui/PeriodSelector';
+
+const FinanceHelpModal = lazy(() =>
+  import('./FinanceHelpModal').then((m) => ({ default: m.FinanceHelpModal }))
+);
 import { formatCurrency } from './utils/formatCurrency';
 import { Portal } from '../ui/Portal';
 import { triggerToast } from '../ui/ToastContext';
@@ -232,7 +235,7 @@ export default function FinanceView({ tab }: { tab?: Tab }) {
 
   return (
     <div className="h-full flex flex-col bg-dark-bg">
-      <div className="flex-1 overflow-y-auto smooth-scroll-container overscroll-contain p-4 sm:p-6">
+      <div className="flex-1 overflow-y-auto overscroll-contain custom-scrollbar p-4 sm:p-6">
         <div className="w-full max-w-6xl mx-auto flex flex-col gap-5">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
@@ -483,10 +486,14 @@ export default function FinanceView({ tab }: { tab?: Tab }) {
         onConfirmPendingTransaction={handleConfirmPendingTransaction}
       />
 
-      <FinanceHelpModal
-        isOpen={showHelpModal}
-        onClose={() => setShowHelpModal(false)}
-      />
+      {showHelpModal && (
+        <Suspense fallback={null}>
+          <FinanceHelpModal
+            isOpen={showHelpModal}
+            onClose={() => setShowHelpModal(false)}
+          />
+        </Suspense>
+      )}
 
       {wishlistToDeleteId && (
         <Portal>

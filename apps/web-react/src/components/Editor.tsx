@@ -40,7 +40,7 @@ function Editor({
   onCreateLinkedPage,
   isActive = true,
 }: EditorProps) {
-  const [settings, setSettings] = useState(getSettings());
+  const [settings, setSettings] = useState(getSettings);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const instanceId = useRef('ed_inst_' + Math.random().toString(36).substring(2, 9)).current;
 

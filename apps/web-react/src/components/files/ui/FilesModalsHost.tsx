@@ -1,14 +1,16 @@
+import { lazy, Suspense } from 'react';
 import type { FileFolder, FileItem } from '../../../types';
-import FileUploadModal from '../FileUploadModal';
-import FolderUploadModal from '../FolderUploadModal';
-import FolderModal from '../FolderModal';
-import DeleteModal from '../DeleteModal';
 import FileContextMenu from '../FileContextMenu';
-import FileInfoModal from '../FileInfoModal';
-import FileViewer from '../FileViewer';
-import RenameModal from '../RenameModal';
-import MoveModal from '../MoveModal';
-import DriveAuthModal from '../../library/modals/DriveAuthModal';
+
+const FileUploadModal = lazy(() => import('../FileUploadModal'));
+const FolderUploadModal = lazy(() => import('../FolderUploadModal'));
+const FolderModal = lazy(() => import('../FolderModal'));
+const DeleteModal = lazy(() => import('../DeleteModal'));
+const FileInfoModal = lazy(() => import('../FileInfoModal'));
+const FileViewer = lazy(() => import('../FileViewer'));
+const RenameModal = lazy(() => import('../RenameModal'));
+const MoveModal = lazy(() => import('../MoveModal'));
+const DriveAuthModal = lazy(() => import('../../library/modals/DriveAuthModal'));
 
 interface FilesModalsHostProps {
   selectedFolderId: string | null;
@@ -97,41 +99,43 @@ export function FilesModalsHost({
 }: FilesModalsHostProps) {
   return (
     <>
-      {showUploadModal && (
-        <FileUploadModal 
-          onClose={onCloseUploadModal}
-          onUploadComplete={onUploadComplete}
-          currentFolderId={selectedFolderId}
-          initialFiles={uploadInitialFiles}
-        />
-      )}
-      
-      {showFolderUploadModal && (
-        <FolderUploadModal 
-          onClose={onCloseFolderUploadModal}
-          onUploadComplete={onUploadComplete}
-          currentFolderId={selectedFolderId}
-        />
-      )}
+      <Suspense fallback={null}>
+        {showUploadModal && (
+          <FileUploadModal 
+            onClose={onCloseUploadModal}
+            onUploadComplete={onUploadComplete}
+            currentFolderId={selectedFolderId}
+            initialFiles={uploadInitialFiles}
+          />
+        )}
+        
+        {showFolderUploadModal && (
+          <FolderUploadModal 
+            onClose={onCloseFolderUploadModal}
+            onUploadComplete={onUploadComplete}
+            currentFolderId={selectedFolderId}
+          />
+        )}
 
-      {showFolderModal && (
-        <FolderModal
-          onClose={onCloseFolderModal}
-          onSave={onFolderSaved}
-          existingFolder={editingFolder}
-          parentId={editingFolder ? undefined : newFolderParentId}
-        />
-      )}
-      
-      {(itemToDelete || itemsToDelete) && (
-        <DeleteModal
-          item={itemToDelete?.item}
-          isFolder={itemToDelete?.isFolder}
-          items={itemsToDelete || undefined}
-          onClose={onCloseDeleteModal}
-          onDeleted={onDeleted}
-        />
-      )}
+        {showFolderModal && (
+          <FolderModal
+            onClose={onCloseFolderModal}
+            onSave={onFolderSaved}
+            existingFolder={editingFolder}
+            parentId={editingFolder ? undefined : newFolderParentId}
+          />
+        )}
+        
+        {(itemToDelete || itemsToDelete) && (
+          <DeleteModal
+            item={itemToDelete?.item}
+            isFolder={itemToDelete?.isFolder}
+            items={itemsToDelete || undefined}
+            onClose={onCloseDeleteModal}
+            onDeleted={onDeleted}
+          />
+        )}
+      </Suspense>
       
       {contextMenu && (
         <FileContextMenu
@@ -149,46 +153,48 @@ export function FilesModalsHost({
         />
       )}
 
-      {itemToRename && (
-        <RenameModal
-          item={itemToRename.item}
-          isFolder={itemToRename.isFolder}
-          onClose={onCloseRenameModal}
-          onRename={onRename}
-        />
-      )}
+      <Suspense fallback={null}>
+        {itemToRename && (
+          <RenameModal
+            item={itemToRename.item}
+            isFolder={itemToRename.isFolder}
+            onClose={onCloseRenameModal}
+            onRename={onRename}
+          />
+        )}
 
-      {(itemToMove || itemsToMove) && (
-        <MoveModal
-          item={itemToMove?.item}
-          isFolder={itemToMove?.isFolder}
-          items={itemsToMove || undefined}
-          folders={folders}
-          onClose={onCloseMoveModal}
-          onMove={onMove}
-        />
-      )}
+        {(itemToMove || itemsToMove) && (
+          <MoveModal
+            item={itemToMove?.item}
+            isFolder={itemToMove?.isFolder}
+            items={itemsToMove || undefined}
+            folders={folders}
+            onClose={onCloseMoveModal}
+            onMove={onMove}
+          />
+        )}
 
-      {itemToInfo && (
-        <FileInfoModal
-          item={itemToInfo}
-          onClose={onCloseInfoModal}
-        />
-      )}
-      
-      {itemToView && (
-        <FileViewer
-          item={itemToView}
-          onClose={onCloseViewModal}
-        />
-      )}
+        {itemToInfo && (
+          <FileInfoModal
+            item={itemToInfo}
+            onClose={onCloseInfoModal}
+          />
+        )}
+        
+        {itemToView && (
+          <FileViewer
+            item={itemToView}
+            onClose={onCloseViewModal}
+          />
+        )}
 
-      {showDriveAuth && (
-        <DriveAuthModal 
-          onClose={onCloseDriveAuth}
-          onSuccess={onDriveAuthSuccess}
-        />
-      )}
+        {showDriveAuth && (
+          <DriveAuthModal 
+            onClose={onCloseDriveAuth}
+            onSuccess={onDriveAuthSuccess}
+          />
+        )}
+      </Suspense>
     </>
   );
 }

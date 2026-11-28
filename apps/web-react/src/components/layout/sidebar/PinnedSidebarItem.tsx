@@ -1,13 +1,14 @@
+import { memo, useMemo } from 'react';
 import { GripVertical } from 'lucide-react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import SidebarItem from './SidebarItem';
-import type { Page, Tab } from '../../../types';
+import type { Page } from '../../../types';
 
 interface PinnedSidebarItemProps {
   page: Page;
   index?: number;
-  activeTab: Tab | null;
+  activePageId: string | null;
   onCreatePage: (parentId: string | null) => Promise<void>;
   onUpdatePage: (id: string, updates: Partial<Page>) => Promise<void>;
   childrenMap: Map<string, Page[]>;
@@ -15,9 +16,9 @@ interface PinnedSidebarItemProps {
   expandedSet?: Set<string>;
 }
 
-export function PinnedSidebarItem({
+export const PinnedSidebarItem = memo(function PinnedSidebarItem({
   page,
-  activeTab,
+  activePageId,
   onCreatePage,
   onUpdatePage,
   childrenMap,
@@ -36,18 +37,25 @@ export function PinnedSidebarItem({
     data: { type: 'pinned-sort', pageId: page.id, page },
   });
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    zIndex: isDragging ? 50 : undefined,
-    opacity: isDragging ? 0.4 : 1,
-  };
+  const transformStr = CSS.Transform.toString(transform);
+  const style = useMemo(
+    () =>
+      transformStr || transition || isDragging
+        ? {
+            transform: transformStr,
+            transition,
+            zIndex: isDragging ? 50 : undefined,
+            opacity: isDragging ? 0.4 : 1,
+          }
+        : undefined,
+    [transformStr, transition, isDragging]
+  );
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className="group relative flex items-center transition-all rounded-lg hover:bg-white/[0.02]"
+      className="group relative flex items-center transition-colors rounded-lg hover:bg-white/[0.02]"
     >
       <div
         {...attributes}
@@ -61,7 +69,7 @@ export function PinnedSidebarItem({
         <SidebarItem
           page={page}
           depth={0}
-          activePageId={activeTab?.pageId || null}
+          activePageId={activePageId}
           onCreatePage={onCreatePage}
           onUpdatePage={onUpdatePage}
           isSearchResult={false}
@@ -73,4 +81,4 @@ export function PinnedSidebarItem({
       </div>
     </div>
   );
-}
+});

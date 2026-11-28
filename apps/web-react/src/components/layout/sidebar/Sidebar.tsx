@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, lazy, Suspense, memo, useCallback } from 'react';
 import { Home, PanelLeftClose, PanelLeft, Shield, ChevronUp, ChevronDown, LayoutDashboard, Settings, Zap, Keyboard, HardDrive, DownloadCloud, RefreshCw, Video, Share2 } from 'lucide-react';
 import { useStoreSelector, useStoreDispatch, useActiveTab } from '../../../store/useStore';
 import type { Tab, Page } from '../../../types';
@@ -27,7 +27,7 @@ interface SidebarProps {
   onUpdatePage: (id: string, updates: Partial<Page>) => Promise<void>;
 }
 
-export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
+const Sidebar = memo(function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
   const dispatch = useStoreDispatch();
   const activeTab = useActiveTab();
   const sidebarCollapsed = useStoreSelector((s) => s.sidebarCollapsed);
@@ -38,8 +38,12 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
   const [isCreateWsOpen, setIsCreateWsOpen] = useState(false);
   const [isMembersWsOpen, setIsMembersWsOpen] = useState(false);
   const [isModulesExpanded, setIsModulesExpanded] = useState(() => {
-    const saved = localStorage.getItem('caderno_modules_expanded');
-    return saved ? JSON.parse(saved) : true;
+    try {
+      const saved = localStorage.getItem('caderno_modules_expanded');
+      return saved ? JSON.parse(saved) : true;
+    } catch {
+      return true;
+    }
   });
 
   useEffect(() => {
@@ -70,6 +74,13 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
     windowService.toggleMaximize();
   };
 
+  const handleSelectWorkspace = useCallback(
+    (wsId: string | null) => dispatch({ type: 'SET_ACTIVE_WORKSPACE', workspaceId: wsId }),
+    [dispatch]
+  );
+  const handleOpenCreateWs = useCallback(() => setIsCreateWsOpen(true), []);
+  const handleOpenMembersWs = useCallback(() => setIsMembersWsOpen(true), []);
+
   if (sidebarCollapsed) {
     return (
       <div 
@@ -80,7 +91,7 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
       >
         <button
           onClick={() => dispatch({ type: 'TOGGLE_SIDEBAR' })}
-          className="p-2 rounded-lg hover:bg-white/5 text-dark-subtext hover:text-dark-text transition-all active:scale-95"
+          className="p-2 rounded-lg hover:bg-white/5 text-dark-subtext hover:text-dark-text transition-[color,background-color,transform] active:scale-95"
           title={t('sidebar.expand')}
         >
           <PanelLeft size={18} />
@@ -129,7 +140,7 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
           </div>
           <button
             onClick={() => dispatch({ type: 'TOGGLE_SIDEBAR' })}
-            className="p-1.5 rounded-lg hover:bg-white/5 text-dark-subtext hover:text-dark-text transition-all active:scale-95"
+            className="p-1.5 rounded-lg hover:bg-white/5 text-dark-subtext hover:text-dark-text transition-[color,background-color,transform] active:scale-95"
             title={t('sidebar.collapse')}
           >
             <PanelLeftClose size={16} />
@@ -138,9 +149,9 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
 
         <WorkspaceSwitcher
           currentWorkspaceId={activeWorkspaceId || undefined}
-          onSelectWorkspace={(wsId) => dispatch({ type: 'SET_ACTIVE_WORKSPACE', workspaceId: wsId })}
-          onOpenCreateModal={() => setIsCreateWsOpen(true)}
-          onOpenMembersModal={() => setIsMembersWsOpen(true)}
+          onSelectWorkspace={handleSelectWorkspace}
+          onOpenCreateModal={handleOpenCreateWs}
+          onOpenMembersModal={handleOpenMembersWs}
           currentRole={activeWorkspaceRole || 'owner'}
         />
 
@@ -148,7 +159,7 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
           <SidebarPageTree 
             onCreatePage={onCreatePage} 
             onUpdatePage={onUpdatePage} 
-            activeTab={activeTab ?? null} 
+            activePageId={activeTab?.pageId ?? null} 
           />
         ) : activeModule === 'settings' ? (
           <div className="flex flex-col gap-1 mt-2 flex-1 overflow-y-auto custom-scrollbar smooth-scroll-container pb-2">
@@ -242,4 +253,6 @@ export default function Sidebar({ onCreatePage, onUpdatePage }: SidebarProps) {
       </Suspense>
     </>
   );
-}
+});
+
+export default Sidebar;

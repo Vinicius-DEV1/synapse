@@ -81,7 +81,6 @@ aside,
 .modal-overlay,
 .modal-content {
   transform: translateZ(0);
-  will-change: transform, opacity;
   backface-visibility: hidden;
 }
 

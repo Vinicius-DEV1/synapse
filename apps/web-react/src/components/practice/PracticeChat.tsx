@@ -1,10 +1,6 @@
-import { useState, useEffect } from 'react';
-import { ChatSettingsModal } from './chat/ChatSettingsModal';
-import { ChatSessionSettingsModal } from './chat/ChatSessionSettingsModal';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { ChatTranscript } from './chat/ChatTranscript';
-import { MemoryDrawer } from './chat/MemoryDrawer';
 import { PracticeChatHeader } from './chat/PracticeChatHeader';
-import { PracticeCallControls } from './chat/PracticeCallControls';
 import { PracticeCallBar } from './chat/PracticeCallBar';
 import { usePracticeData } from './hooks/usePracticeData';
 import { useGeminiLiveSession } from './chat/hooks/useGeminiLiveSession';
@@ -16,8 +12,23 @@ import {
 } from './chat/hooks/usePracticePrompts';
 import type { TutorSession } from '../../types';
 import { parseInterviewConfig } from '../../types';
-import { InterviewFeedbackModal } from './chat/InterviewFeedbackModal';
 import { isMobileScreen } from '../../services/platform';
+
+const ChatSettingsModal = lazy(() =>
+  import('./chat/ChatSettingsModal').then((m) => ({ default: m.ChatSettingsModal }))
+);
+const ChatSessionSettingsModal = lazy(() =>
+  import('./chat/ChatSessionSettingsModal').then((m) => ({ default: m.ChatSessionSettingsModal }))
+);
+const MemoryDrawer = lazy(() =>
+  import('./chat/MemoryDrawer').then((m) => ({ default: m.MemoryDrawer }))
+);
+const PracticeCallControls = lazy(() =>
+  import('./chat/PracticeCallControls').then((m) => ({ default: m.PracticeCallControls }))
+);
+const InterviewFeedbackModal = lazy(() =>
+  import('./chat/InterviewFeedbackModal').then((m) => ({ default: m.InterviewFeedbackModal }))
+);
 
 interface PracticeChatProps {
   session: TutorSession;
@@ -173,64 +184,72 @@ export default function PracticeChat({ session }: PracticeChatProps) {
       {/* Messages Transcript */}
       <ChatTranscript messages={messages} />
 
-      {/* Fullscreen Overlay Call UI */}
-      {isInCall && (
-        <PracticeCallControls
-          session={session}
-          isConnected={isConnected}
-          isRecording={isRecording}
-          isPlaying={isPlaying}
-          micLabel={micLabel}
-          error={error}
-          liveTranscript={liveTranscript}
-          visualizerRefs={visualizerRefs}
-          onEndCall={endCall}
-          interviewConfig={interviewConfig}
-          playbackAnalyserRef={playbackAnalyserRef}
-        />
-      )}
+      <Suspense fallback={null}>
+        {/* Fullscreen Overlay Call UI */}
+        {isInCall && (
+          <PracticeCallControls
+            session={session}
+            isConnected={isConnected}
+            isRecording={isRecording}
+            isPlaying={isPlaying}
+            micLabel={micLabel}
+            error={error}
+            liveTranscript={liveTranscript}
+            visualizerRefs={visualizerRefs}
+            onEndCall={endCall}
+            interviewConfig={interviewConfig}
+            playbackAnalyserRef={playbackAnalyserRef}
+          />
+        )}
 
-      {/* Modal de Avaliação da Entrevista */}
-      {isInterview && interviewConfig && (
-        <InterviewFeedbackModal
-          isOpen={isFeedbackOpen}
-          onClose={() => setIsFeedbackOpen(false)}
-          config={interviewConfig}
-          messages={messages}
-        />
-      )}
+        {/* Modal de Avaliação da Entrevista */}
+        {isInterview && interviewConfig && isFeedbackOpen && (
+          <InterviewFeedbackModal
+            isOpen={isFeedbackOpen}
+            onClose={() => setIsFeedbackOpen(false)}
+            config={interviewConfig}
+            messages={messages}
+          />
+        )}
 
-      {/* Drawer de Memórias */}
-      <MemoryDrawer
-        isOpen={isMemoryOpen}
-        onClose={() => setIsMemoryOpen(false)}
-        memories={memories}
-        onDeleteMemory={deleteMemory}
-      />
+        {/* Drawer de Memórias */}
+        {isMemoryOpen && (
+          <MemoryDrawer
+            isOpen={isMemoryOpen}
+            onClose={() => setIsMemoryOpen(false)}
+            memories={memories}
+            onDeleteMemory={deleteMemory}
+          />
+        )}
 
-      {/* Modal de Configurações de Voz */}
-      <ChatSettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        globalSystemPrompt={globalSystemPrompt}
-        setGlobalSystemPrompt={setGlobalSystemPrompt}
-        saveGlobalPrompt={saveGlobalPrompt}
-        defaultSystemInstruction={DEFAULT_SYSTEM_INSTRUCTION}
-        previewVoice={previewVoice}
-        previewingVoice={previewingVoice}
-      />
+        {/* Modal de Configurações de Voz */}
+        {isSettingsOpen && (
+          <ChatSettingsModal
+            isOpen={isSettingsOpen}
+            onClose={() => setIsSettingsOpen(false)}
+            globalSystemPrompt={globalSystemPrompt}
+            setGlobalSystemPrompt={setGlobalSystemPrompt}
+            saveGlobalPrompt={saveGlobalPrompt}
+            defaultSystemInstruction={DEFAULT_SYSTEM_INSTRUCTION}
+            previewVoice={previewVoice}
+            previewingVoice={previewingVoice}
+          />
+        )}
 
-      {/* Modal de Configurações da Sessão Atual */}
-      <ChatSessionSettingsModal
-        isOpen={isSessionSettingsOpen}
-        onClose={() => setIsSessionSettingsOpen(false)}
-        session={session}
-        customPrompt={customPrompt}
-        setCustomPrompt={setCustomPrompt}
-        saveCustomPrompt={saveCustomPrompt}
-        presets={presets}
-        saveAsNewPreset={saveAsNewPreset}
-      />
+        {/* Modal de Configurações da Sessão Atual */}
+        {isSessionSettingsOpen && (
+          <ChatSessionSettingsModal
+            isOpen={isSessionSettingsOpen}
+            onClose={() => setIsSessionSettingsOpen(false)}
+            session={session}
+            customPrompt={customPrompt}
+            setCustomPrompt={setCustomPrompt}
+            saveCustomPrompt={saveCustomPrompt}
+            presets={presets}
+            saveAsNewPreset={saveAsNewPreset}
+          />
+        )}
+      </Suspense>
     </div>
   );
 }

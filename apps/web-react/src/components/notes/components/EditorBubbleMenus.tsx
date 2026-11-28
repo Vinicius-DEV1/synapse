@@ -54,7 +54,7 @@ export function EditorBubbleMenus({ editor }: EditorBubbleMenusProps) {
 
           return true;
         }}
-        className="flex shadow-elevated rounded-xl border border-white/5 bg-dark-bg/80 backdrop-blur-xl overflow-visible"
+        className="flex shadow-elevated rounded-xl border border-white/5 bg-dark-bg/95 backdrop-blur-sm overflow-visible"
       >
         <FloatingToolbar editor={editor} />
       </BubbleMenu>

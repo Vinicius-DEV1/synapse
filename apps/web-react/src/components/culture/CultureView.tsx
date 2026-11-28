@@ -1,18 +1,23 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect, lazy, Suspense } from 'react';
 import { useTranslation } from '../../i18n';
 import { Filter, ChevronUp, ChevronDown } from 'lucide-react';
 import type { CultureItem } from '../../types';
 import { CultureService } from '../../services/culture';
 import CultureMediaCard from './CultureMediaCard';
-import CultureAddModal from './CultureAddModal';
-import CultureViewModal from './CultureViewModal';
-import CultureGoalModal from './CultureGoalModal';
-import CultureHelpModal from './CultureHelpModal';
 import { useCulture, TYPE_LABELS, sortItems } from './hooks/useCulture';
 
 import { CultureHeader } from './ui/CultureHeader';
 import { CultureRecentReleases } from './ui/CultureRecentReleases';
-import { CultureRecommendationsView } from './recommendations/CultureRecommendationsView';
+
+const CultureAddModal = lazy(() => import('./CultureAddModal'));
+const CultureViewModal = lazy(() => import('./CultureViewModal'));
+const CultureGoalModal = lazy(() => import('./CultureGoalModal'));
+const CultureHelpModal = lazy(() => import('./CultureHelpModal'));
+const CultureRecommendationsView = lazy(() =>
+  import('./recommendations/CultureRecommendationsView').then((m) => ({
+    default: m.CultureRecommendationsView,
+  }))
+);
 
 export default function CultureView() {
   const { t } = useTranslation();
@@ -41,6 +46,16 @@ export default function CultureView() {
   const [editingItem, setEditingItem] = useState<CultureItem | null>(null);
   const [viewingItem, setViewingItem] = useState<CultureItem | null>(null);
   const [goalModalItem, setGoalModalItem] = useState<CultureItem | null>(null);
+  // Defer mounting recommendations until the user opens the Recommendations tab, then keep mounted for zero-latency switching
+  const [hasVisitedRecommendations, setHasVisitedRecommendations] = useState(
+    () => activeFilter === 'recommendations'
+  );
+
+  useEffect(() => {
+    if (activeFilter === 'recommendations') {
+      setHasVisitedRecommendations(true);
+    }
+  }, [activeFilter]);
 
   const groupedItems = useMemo(() => {
     if (activeFilter !== 'all') return null;
@@ -151,10 +166,14 @@ export default function CultureView() {
 
       {/* ── Content ── */}
       <div className="flex-1 overflow-y-auto p-6 scrollbar-custom smooth-scroll-container">
-        {/* Recommendations Tab: preserved in DOM to ensure zero-latency switching and uninterrupted async AI generation */}
-        <div className={activeFilter === 'recommendations' ? 'block' : 'hidden'}>
-          <CultureRecommendationsView onLibraryUpdated={loadData} />
-        </div>
+        {/* Recommendations Tab: mounted on first visit, then preserved in DOM for zero-latency switching and uninterrupted async AI generation */}
+        {hasVisitedRecommendations && (
+          <div className={activeFilter === 'recommendations' ? 'block' : 'hidden'}>
+            <Suspense fallback={<div className="py-16 text-center text-dark-subtext text-sm animate-pulse">Carregando recomendações...</div>}>
+              <CultureRecommendationsView onLibraryUpdated={loadData} />
+            </Suspense>
+          </div>
+        )}
 
         {/* Library Collections (Tudo, Filmes, Séries, etc.) */}
         {activeFilter !== 'recommendations' && (
@@ -211,41 +230,45 @@ export default function CultureView() {
         ))}
       </div>
 
-      {isAddModalOpen && (
-        <CultureAddModal
-          isOpen={isAddModalOpen}
-          onClose={handleCloseModal}
-          onSuccess={loadData}
-          itemToEdit={editingItem}
-        />
-      )}
+      <Suspense fallback={null}>
+        {isAddModalOpen && (
+          <CultureAddModal
+            isOpen={isAddModalOpen}
+            onClose={handleCloseModal}
+            onSuccess={loadData}
+            itemToEdit={editingItem}
+          />
+        )}
 
-      {viewingItem && (
-        <CultureViewModal
-          isOpen={!!viewingItem}
-          onClose={handleCloseViewModal}
-          item={viewingItem}
-          onUpdate={loadData}
-          onEdit={(it) => {
-            handleCloseViewModal();
-            handleEdit(it);
-          }}
-        />
-      )}
+        {viewingItem && (
+          <CultureViewModal
+            isOpen={!!viewingItem}
+            onClose={handleCloseViewModal}
+            item={viewingItem}
+            onUpdate={loadData}
+            onEdit={(it) => {
+              handleCloseViewModal();
+              handleEdit(it);
+            }}
+          />
+        )}
 
-      {goalModalItem && (
-        <CultureGoalModal
-          item={goalModalItem}
-          isOpen={!!goalModalItem}
-          onClose={handleCloseGoalModal}
-          onSave={handleSaveGoalNote}
-        />
-      )}
+        {goalModalItem && (
+          <CultureGoalModal
+            item={goalModalItem}
+            isOpen={!!goalModalItem}
+            onClose={handleCloseGoalModal}
+            onSave={handleSaveGoalNote}
+          />
+        )}
 
-      <CultureHelpModal
-        isOpen={isHelpModalOpen}
-        onClose={() => setIsHelpModalOpen(false)}
-      />
+        {isHelpModalOpen && (
+          <CultureHelpModal
+            isOpen={isHelpModalOpen}
+            onClose={() => setIsHelpModalOpen(false)}
+          />
+        )}
+      </Suspense>
     </div>
   );
 }

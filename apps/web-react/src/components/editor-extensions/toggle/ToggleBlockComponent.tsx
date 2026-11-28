@@ -159,7 +159,7 @@ export const ToggleBlockComponent = (props: NodeViewProps) => {
       {isEditable && (
         <div
           contentEditable={false}
-          className="absolute -left-7 top-0.5 z-20 flex flex-col items-center gap-0.5 rounded-md border border-white/10 bg-dark-bg/90 p-0.5 text-dark-subtext opacity-0 shadow-lg backdrop-blur-xl transition-all group-hover/toggle:opacity-100"
+          className="absolute -left-7 top-0.5 z-20 flex flex-col items-center gap-0.5 rounded-md border border-white/10 bg-dark-bg/95 p-0.5 text-dark-subtext opacity-0 shadow-lg transition-opacity group-hover/toggle:opacity-100"
         >
           <button
             onClick={(e) => {
@@ -222,10 +222,10 @@ export const ToggleBlockComponent = (props: NodeViewProps) => {
           className="absolute top-0 right-1 opacity-0 [.toggle-wrapper:hover:not(:has(.toggle-wrapper:hover))_>_&]:opacity-100 transition-opacity z-50"
           contentEditable={false}
         >
-          <div className="flex items-center gap-0.5 bg-dark-bg/80 backdrop-blur-sm border border-white/5 rounded-lg p-0.5 shadow-sm">
+          <div className="flex items-center gap-0.5 bg-dark-bg/95 border border-white/10 rounded-lg p-0.5 shadow-sm">
             <button
               onClick={handleConvertToPage}
-              className="p-1 rounded-md transition-all text-dark-subtext hover:bg-white/10 hover:text-white"
+              className="p-1 rounded-md transition-colors text-dark-subtext hover:bg-white/10 hover:text-white"
               title="Converter em Página"
             >
               <FileText size={14} />
@@ -234,7 +234,7 @@ export const ToggleBlockComponent = (props: NodeViewProps) => {
             <div className="relative">
               <button
                 onClick={handleCopy}
-                className={`p-1 rounded-md transition-all ${
+                className={`p-1 rounded-md transition-colors ${
                   copied ? 'text-green-400' : 'text-dark-subtext hover:bg-white/10 hover:text-white'
                 }`}
                 title="Copiar lista oculta"
@@ -251,7 +251,7 @@ export const ToggleBlockComponent = (props: NodeViewProps) => {
             <button
               ref={aiModal.aiButtonRef}
               onClick={aiModal.handleOpenAi}
-              className="p-1 rounded-md transition-all text-brand-400 hover:bg-brand-500/20 hover:text-brand-300"
+              className="p-1 rounded-md transition-colors text-brand-400 hover:bg-brand-500/20 hover:text-brand-300"
               title="Assistente de IA"
             >
               <Sparkles size={14} />
@@ -260,7 +260,7 @@ export const ToggleBlockComponent = (props: NodeViewProps) => {
             <div className="relative" ref={confirmRef}>
               <button
                 onClick={() => setShowConfirm(!showConfirm)}
-                className="p-1 rounded-md transition-all text-dark-subtext hover:bg-red-500/20 hover:text-red-400"
+                className="p-1 rounded-md transition-colors text-dark-subtext hover:bg-red-500/20 hover:text-red-400"
                 title="Excluir lista oculta"
               >
                 <Trash2 size={14} />

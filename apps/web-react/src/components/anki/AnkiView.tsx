@@ -1,13 +1,14 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, lazy, Suspense } from 'react';
 import { Plus, BrainCircuit, HelpCircle, BarChart2 } from 'lucide-react';
-import StudySession from './StudySession';
-import DeckBrowser from './DeckBrowser';
-import AnkiStats from './AnkiStats';
-import CreateDeckModal from './CreateDeckModal';
-import AnkiHelpModal from './AnkiHelpModal';
 import { DeckListItem } from './DeckListItem';
 import { useTranslation } from '../../i18n';
 import type { Deck, DeckTreeNode } from './types';
+
+const StudySession = lazy(() => import('./StudySession'));
+const DeckBrowser = lazy(() => import('./DeckBrowser'));
+const AnkiStats = lazy(() => import('./AnkiStats'));
+const CreateDeckModal = lazy(() => import('./CreateDeckModal'));
+const AnkiHelpModal = lazy(() => import('./AnkiHelpModal'));
 
 export default function AnkiView() {
   const { t } = useTranslation();
@@ -198,43 +199,47 @@ export default function AnkiView() {
           )}
         </div>
       ) : (
-        <AnkiStats onBack={() => setShowStats(false)} />
+        <Suspense fallback={<div className="py-20 text-center text-dark-subtext text-sm animate-pulse">Carregando estatísticas...</div>}>
+          <AnkiStats onBack={() => setShowStats(false)} />
+        </Suspense>
       )}
     </div>
       
-      {studyingDeckId && (
-        <StudySession deckId={studyingDeckId} onClose={() => setStudyingDeckId(null)} />
-      )}
+      <Suspense fallback={null}>
+        {studyingDeckId && (
+          <StudySession deckId={studyingDeckId} onClose={() => setStudyingDeckId(null)} />
+        )}
 
-      {managingDeck && (
-        <DeckBrowser 
-          deck={managingDeck} 
-          onClose={() => setManagingDeck(null)} 
-          onDeckDeleted={() => {
-            setManagingDeck(null);
-            loadDecks();
-          }} 
-          onDeckUpdated={(updatedDeck) => {
-            setManagingDeck(updatedDeck);
-            loadDecks();
-          }}
-        />
-      )}
+        {managingDeck && (
+          <DeckBrowser 
+            deck={managingDeck} 
+            onClose={() => setManagingDeck(null)} 
+            onDeckDeleted={() => {
+              setManagingDeck(null);
+              loadDecks();
+            }} 
+            onDeckUpdated={(updatedDeck) => {
+              setManagingDeck(updatedDeck);
+              loadDecks();
+            }}
+          />
+        )}
 
-      {showCreateModal && (
-        <CreateDeckModal 
-          parentId={parentDeckId} 
-          onClose={() => {
-            setShowCreateModal(false);
-            setParentDeckId(null);
-          }} 
-          onCreate={handleCreateDeck} 
-        />
-      )}
+        {showCreateModal && (
+          <CreateDeckModal 
+            parentId={parentDeckId} 
+            onClose={() => {
+              setShowCreateModal(false);
+              setParentDeckId(null);
+            }} 
+            onCreate={handleCreateDeck} 
+          />
+        )}
 
-      {showHelpModal && (
-        <AnkiHelpModal onClose={() => setShowHelpModal(false)} />
-      )}
+        {showHelpModal && (
+          <AnkiHelpModal onClose={() => setShowHelpModal(false)} />
+        )}
+      </Suspense>
     </div>
   );
 }

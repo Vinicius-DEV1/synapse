@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   ArrowLeft,
   ChevronRight,
@@ -108,9 +109,9 @@ export const BatteryDetailModal = React.memo(function BatteryDetailModal({
       ? Math.round((correctCount / answeredCount) * 100)
       : 0;
 
-  return (
+  const modalContent = (
     <div
-      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in overscroll-none"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
@@ -307,7 +308,7 @@ export const BatteryDetailModal = React.memo(function BatteryDetailModal({
         </div>
 
         {/* Scrollable Body: Subgroups + On-demand Paginated Questions */}
-        <div className="flex-1 overflow-y-auto smooth-scroll-container custom-scrollbar p-5 space-y-4">
+        <div className="flex-1 overflow-y-auto overscroll-contain custom-scrollbar p-5 space-y-4">
           {hasChildren && (
             <div className="space-y-2">
               <h4 className="text-xs font-semibold uppercase tracking-wider text-dark-subtext">
@@ -351,4 +352,8 @@ export const BatteryDetailModal = React.memo(function BatteryDetailModal({
       </div>
     </div>
   );
+
+  // Portal to document.body so ancestor transforms (e.g. .smooth-scroll-container)
+  // do not clip the modal, block full-screen backdrop blur, or leak wheel scrolling.
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 });

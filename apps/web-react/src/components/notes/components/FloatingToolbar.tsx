@@ -122,7 +122,7 @@ export default function FloatingToolbar({ editor, onAiClick }: FloatingToolbarPr
   const inactiveClass = "text-dark-subtext hover:bg-white/10 hover:text-brand-400";
 
   return (
-    <div className="flex items-center gap-0.5 px-2 py-1.5 bg-dark-bg/90 backdrop-blur-xl border border-white/[0.06] rounded-xl shadow-2xl animate-fade-in-up">
+    <div className="flex items-center gap-0.5 px-2 py-1.5 bg-dark-bg/95 border border-white/[0.06] rounded-xl shadow-2xl animate-fade-in-up">
       {showLinkInput ? (
         <div className="flex items-center gap-1" ref={linkInputRef}>
           <input
@@ -210,7 +210,7 @@ export default function FloatingToolbar({ editor, onAiClick }: FloatingToolbarPr
             {showColors && (
               <div
                 ref={colorMenuRef}
-                className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-dark-card/95 backdrop-blur-xl border border-white/[0.06] rounded-xl p-2.5 shadow-2xl flex flex-col gap-2 min-w-[210px] z-50 animate-scale-in"
+                className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-dark-card/95 border border-white/[0.06] rounded-xl p-2.5 shadow-2xl flex flex-col gap-2 min-w-[210px] z-50 animate-scale-in"
               >
                 {/* Cor do Texto */}
                 <div>

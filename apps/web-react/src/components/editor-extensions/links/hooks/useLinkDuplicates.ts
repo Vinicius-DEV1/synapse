@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useContext } from 'react';
-import { StoreContext, getStoreState } from '../../../../store/useStore';
+import { useState, useEffect, useRef } from 'react';
+import { usePages } from '../../../../store/useStore';
 import type { Page } from '../../../../types';
 import { getPageAncestors } from '../../../../utils/hierarchy';
 import { getEditorBackupMap } from '../../../notes/hooks/editorBackupStore';
@@ -129,8 +129,7 @@ export function useLinkDuplicates(
   url: string | null | undefined,
   currentPageId?: string | null
 ) {
-  const storeCtx = useContext(StoreContext);
-  const state = storeCtx?.state || getStoreState();
+  const pages = usePages();
   const [duplicatePages, setDuplicatePages] = useState<DuplicatePageInfo[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const cancelRef = useRef(false);
@@ -149,10 +148,9 @@ export function useLinkDuplicates(
     const performSearch = async () => {
       setIsSearching(true);
       try {
-        const currentPages = state?.pages || getStoreState().pages;
         const results = await findDuplicatePagesForLink(
           url,
-          currentPages,
+          pages,
           currentPageId,
           () => cancelRef.current
         );
@@ -192,7 +190,7 @@ export function useLinkDuplicates(
       if (timer) clearTimeout(timer);
       unsubscribe();
     };
-  }, [url, currentPageId, state?.pages]);
+  }, [url, currentPageId, pages]);
 
   return { duplicatePages, isSearching };
 }

@@ -172,7 +172,7 @@ export default function SubPageGrid({ pages, onNavigate, onCreatePage, onUpdateP
           </SortableContext>
           <button
             onClick={onCreatePage}
-            className="flex items-center justify-center gap-2 p-3 rounded-xl border border-dashed border-white/[0.08] hover:border-brand-500/50 hover:bg-brand-500/5 transition-all text-dark-subtext hover:text-brand-400 group h-[50px]"
+            className="flex items-center justify-center gap-2 p-3 rounded-xl border border-dashed border-white/[0.08] hover:border-brand-500/50 hover:bg-brand-500/5 transition-colors text-dark-subtext hover:text-brand-400 group h-[50px]"
           >
             <Plus size={18} className="group-hover:scale-110 transition-transform" />
             <span className="text-sm font-medium">Nova Sub-página</span>

@@ -1,13 +1,15 @@
+import { lazy, Suspense, useMemo } from 'react';
 import Dashboard from './Dashboard';
-import SetupModal from './SetupModal';
-import ActiveTimer from './ActiveTimer';
-import CancelModal from './CancelModal';
-import SettingsModal from './SettingsModal';
-import AlarmsList from './AlarmsList';
-import AlarmSetupModal from './AlarmSetupModal';
-import { LofiView } from './LofiView';
-import FocusStatsView from './FocusStatsView';
 import { useFocusState, useFocusActions } from '../../store/FocusContext';
+
+const SetupModal = lazy(() => import('./SetupModal'));
+const ActiveTimer = lazy(() => import('./ActiveTimer'));
+const CancelModal = lazy(() => import('./CancelModal'));
+const SettingsModal = lazy(() => import('./SettingsModal'));
+const AlarmsList = lazy(() => import('./AlarmsList'));
+const AlarmSetupModal = lazy(() => import('./AlarmSetupModal'));
+const LofiView = lazy(() => import('./LofiView').then((m) => ({ default: m.LofiView })));
+const FocusStatsView = lazy(() => import('./FocusStatsView'));
 
 export default function FocusApp() {
   const {
@@ -21,7 +23,7 @@ export default function FocusApp() {
     handleSaveCancel, handleAbortSetup
   } = useFocusActions();
 
-  const uniqueTags = Array.from(new Set(sessions.map(s => s.tag)));
+  const uniqueTags = useMemo(() => Array.from(new Set(sessions.map(s => s.tag))), [sessions]);
 
   return (
     <div className="w-full h-full flex flex-col bg-dark-bg text-dark-text overflow-y-auto overflow-x-hidden relative">
@@ -36,42 +38,44 @@ export default function FocusApp() {
           onDeleteSession={handleDeleteSession} 
         />
       )}
-      {view === 'stats' && (
-        <FocusStatsView onBack={() => setView('dashboard')} />
-      )}
-      {view === 'lofi' && (
-        <LofiView />
-      )}
-      {view === 'alarms' && (
-        <AlarmsList 
-          alarms={alarms} 
-          onBack={() => setView('dashboard')} 
-          onNew={() => setShowAlarmSetup(true)}
-          onToggle={handleToggleAlarm}
-          onDelete={handleDeleteAlarm}
-        />
-      )}
-      {view === 'settings' && (
-        <SettingsModal onClose={() => setView('dashboard')} onRefresh={loadData} />
-      )}
-      {view === 'setup' && (
-        <SetupModal onStart={handleStartTimer} onCancel={handleAbortSetup} existingTags={uniqueTags} />
-      )}
-      {view === 'timer' && currentSession && (
-        <ActiveTimer />
-      )}
-      {view === 'cancel' && (
-        <CancelModal
-          onSave={handleSaveCancel}
-        />
-      )}
+      <Suspense fallback={null}>
+        {view === 'stats' && (
+          <FocusStatsView onBack={() => setView('dashboard')} />
+        )}
+        {view === 'lofi' && (
+          <LofiView />
+        )}
+        {view === 'alarms' && (
+          <AlarmsList 
+            alarms={alarms} 
+            onBack={() => setView('dashboard')} 
+            onNew={() => setShowAlarmSetup(true)}
+            onToggle={handleToggleAlarm}
+            onDelete={handleDeleteAlarm}
+          />
+        )}
+        {view === 'settings' && (
+          <SettingsModal onClose={() => setView('dashboard')} onRefresh={loadData} />
+        )}
+        {view === 'setup' && (
+          <SetupModal onStart={handleStartTimer} onCancel={handleAbortSetup} existingTags={uniqueTags} />
+        )}
+        {view === 'timer' && currentSession && (
+          <ActiveTimer />
+        )}
+        {view === 'cancel' && (
+          <CancelModal
+            onSave={handleSaveCancel}
+          />
+        )}
 
-      {showAlarmSetup && (
-        <AlarmSetupModal
-          onCancel={() => setShowAlarmSetup(false)}
-          onSave={handleSaveAlarm}
-        />
-      )}
+        {showAlarmSetup && (
+          <AlarmSetupModal
+            onCancel={() => setShowAlarmSetup(false)}
+            onSave={handleSaveAlarm}
+          />
+        )}
+      </Suspense>
 
       {/* Global Toast */}
       {toastMessage && (

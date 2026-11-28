@@ -1,13 +1,20 @@
-import { useState, useEffect, type MouseEvent } from 'react';
+import { useState, useEffect, lazy, Suspense, type MouseEvent } from 'react';
 import { Plus, MessageCircle, Clock, Trash2, Mic, Menu, X, Briefcase } from 'lucide-react';
 import type { TutorSession, InterviewConfig } from '../../types';
 import { isInterviewSession } from '../../types';
-import PracticeChat from './PracticeChat';
-import { NewPracticeSessionModal } from './modals/NewPracticeSessionModal';
-import { InterviewSetupModal } from './modals/InterviewSetupModal';
-import { PracticeDeleteModal } from './modals/PracticeDeleteModal';
 import { useTranslation } from '../../i18n/I18nContext';
 import { isMobileScreen } from '../../services/platform';
+
+const PracticeChat = lazy(() => import('./PracticeChat'));
+const NewPracticeSessionModal = lazy(() =>
+  import('./modals/NewPracticeSessionModal').then((m) => ({ default: m.NewPracticeSessionModal }))
+);
+const InterviewSetupModal = lazy(() =>
+  import('./modals/InterviewSetupModal').then((m) => ({ default: m.InterviewSetupModal }))
+);
+const PracticeDeleteModal = lazy(() =>
+  import('./modals/PracticeDeleteModal').then((m) => ({ default: m.PracticeDeleteModal }))
+);
 
 export default function PracticeView() {
   const { t } = useTranslation();
@@ -191,7 +198,7 @@ export default function PracticeView() {
                   setActiveSession(session);
                   if (isMobile) setShowSidebar(false);
                 }}
-                className={`group relative p-3 rounded-xl cursor-pointer transition-all border ${
+                className={`cv-auto-row group relative p-3 rounded-xl cursor-pointer transition-colors border ${
                   activeSession?.id === session.id
                     ? 'bg-white/10 border-brand-500/30'
                     : 'bg-transparent border-transparent hover:bg-white/5'
@@ -232,7 +239,9 @@ export default function PracticeView() {
       {/* Main Area */}
       <div className={`flex-1 flex flex-col relative overflow-hidden bg-dark-bg/50 ${isMobile ? '' : 'ml-0'}`}>
         {activeSession ? (
-          <PracticeChat key={activeSession.id} session={activeSession} />
+          <Suspense fallback={<div className="flex-1 flex items-center justify-center text-dark-subtext text-sm animate-pulse">Carregando sessão...</div>}>
+            <PracticeChat key={activeSession.id} session={activeSession} />
+          </Suspense>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center opacity-40 select-none">
             <Mic size={64} className="text-brand-500 mb-4" />
@@ -242,35 +251,43 @@ export default function PracticeView() {
         )}
       </div>
 
-      {/* Modal de Escolha do Tipo de Sessão */}
-      <NewPracticeSessionModal
-        isOpen={isNewModalOpen}
-        onClose={() => setIsNewModalOpen(false)}
-        onSelectFreeMode={handleCreateFreeSession}
-        onSelectInterviewMode={() => {
-          setIsNewModalOpen(false);
-          setIsInterviewSetupOpen(true);
-        }}
-      />
+      <Suspense fallback={null}>
+        {/* Modal de Escolha do Tipo de Sessão */}
+        {isNewModalOpen && (
+          <NewPracticeSessionModal
+            isOpen={isNewModalOpen}
+            onClose={() => setIsNewModalOpen(false)}
+            onSelectFreeMode={handleCreateFreeSession}
+            onSelectInterviewMode={() => {
+              setIsNewModalOpen(false);
+              setIsInterviewSetupOpen(true);
+            }}
+          />
+        )}
 
-      {/* Modal de Configuração da Entrevista */}
-      <InterviewSetupModal
-        isOpen={isInterviewSetupOpen}
-        onClose={() => setIsInterviewSetupOpen(false)}
-        onBack={() => {
-          setIsInterviewSetupOpen(false);
-          setIsNewModalOpen(true);
-        }}
-        onSubmit={handleCreateInterviewSession}
-      />
+        {/* Modal de Configuração da Entrevista */}
+        {isInterviewSetupOpen && (
+          <InterviewSetupModal
+            isOpen={isInterviewSetupOpen}
+            onClose={() => setIsInterviewSetupOpen(false)}
+            onBack={() => {
+              setIsInterviewSetupOpen(false);
+              setIsNewModalOpen(true);
+            }}
+            onSubmit={handleCreateInterviewSession}
+          />
+        )}
 
-      {/* Modal de Confirmação de Exclusão */}
-      <PracticeDeleteModal
-        isOpen={Boolean(sessionToDelete)}
-        sessionTitle={sessionToDelete?.title ?? ''}
-        onClose={() => setSessionToDelete(null)}
-        onConfirmDelete={handleConfirmDelete}
-      />
+        {/* Modal de Confirmação de Exclusão */}
+        {sessionToDelete && (
+          <PracticeDeleteModal
+            isOpen={true}
+            sessionTitle={sessionToDelete.title ?? ''}
+            onClose={() => setSessionToDelete(null)}
+            onConfirmDelete={handleConfirmDelete}
+          />
+        )}
+      </Suspense>
     </div>
   );
 }

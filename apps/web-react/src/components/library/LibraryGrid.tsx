@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import {
   FileText, Plus, MoreVertical, BookOpen, CheckCircle2,
   Circle, Pencil, Trash2, BookMarked, Cloud, CloudDownload, HardDrive, CloudOff,
@@ -141,20 +141,44 @@ export default function LibraryGrid({
     return isNaN(pct) ? 0 : Math.min(100, Math.max(0, pct));
   };
 
+  const booksForCollections = allBooks || books;
+  const booksByCollectionMap = useMemo(() => {
+    const map = new Map<string, LibraryBook[]>();
+    for (const b of booksForCollections) {
+      const legacyColId = (b as { collection_id?: string | null }).collection_id;
+      const seen = new Set<string>();
+      if (b.collections) {
+        for (const c of b.collections) {
+          seen.add(c.id);
+          const list = map.get(c.id);
+          if (list) list.push(b);
+          else map.set(c.id, [b]);
+        }
+      }
+      if (legacyColId && !seen.has(legacyColId)) {
+        const list = map.get(legacyColId);
+        if (list) list.push(b);
+        else map.set(legacyColId, [b]);
+      }
+    }
+    return map;
+  }, [booksForCollections]);
+
   // If in Collections view mode, render the rich Collections Grid
   if (viewMode === 'collections') {
     return (
       <div className="p-4 sm:p-6 flex flex-col gap-6">
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-6">
           {collections.map((col) => (
-            <LibraryCollectionCard
-              key={col.id}
-              collection={col}
-              books={allBooks || books}
-              onSelect={(id) => onSelectCollection?.(id)}
-              onEdit={onEditCollection}
-              onDelete={onDeleteCollection}
-            />
+            <div key={col.id} className="cv-auto-card">
+              <LibraryCollectionCard
+                collection={col}
+                books={booksByCollectionMap.get(col.id) || []}
+                onSelect={(id) => onSelectCollection?.(id)}
+                onEdit={onEditCollection}
+                onDelete={onDeleteCollection}
+              />
+            </div>
           ))}
 
           {onOpenCreateCollection && (
@@ -176,7 +200,7 @@ export default function LibraryGrid({
             {onOpenCreateCollection && (
               <button
                 onClick={onOpenCreateCollection}
-                className="px-4 py-2 rounded-xl text-xs font-semibold bg-brand-600 hover:bg-brand-500 text-white shadow-lg shadow-brand-500/20 transition-all flex items-center gap-2"
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-brand-600 hover:bg-brand-500 text-white shadow-lg shadow-brand-500/20 transition-colors flex items-center gap-2"
               >
                 <Plus size={16} />
                 {t('library.createFirstCollection')}
@@ -577,13 +601,13 @@ export default function LibraryGrid({
       {/* Import Card */}
       <div
         onClick={onImportBook}
-        className="group flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-white/10 hover:border-brand-400/50 cursor-pointer transition-all duration-300 hover:bg-brand-500/5 aspect-[3/4] sm:min-h-[280px]"
+        className="group flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-white/10 hover:border-brand-400/50 cursor-pointer transition-[border-color,background-color] duration-200 hover:bg-brand-500/5 aspect-[3/4] sm:min-h-[280px]"
         style={{
           animation: `fade-in 0.3s ease-out ${books.length * 50}ms both`,
         }}
       >
         <div className="flex flex-col items-center gap-3 text-dark-subtext group-hover:text-brand-400 transition-colors">
-          <div className="p-4 rounded-full bg-white/5 group-hover:bg-brand-500/10 transition-all group-hover:scale-110 duration-300">
+          <div className="p-4 rounded-full bg-white/5 group-hover:bg-brand-500/10 transition-[background-color,transform] group-hover:scale-110 duration-200">
             <Plus size={28} />
           </div>
           <span className="text-sm font-medium">{t('library.importBook')}</span>

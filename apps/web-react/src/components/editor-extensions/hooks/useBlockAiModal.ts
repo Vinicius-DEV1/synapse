@@ -1,13 +1,16 @@
-import { useState, useRef, useCallback, useContext } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import type { Editor } from '@tiptap/core';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import { DOMSerializer } from 'prosemirror-model';
-import { StoreContext, getStoreState, getStoreDispatch } from '../../../store/useStore';
+import { useStoreDispatch, useStoreSelector } from '../../../store/useStore';
+import type { AppState } from '../../../types';
 import { triggerToast } from '../../ui/ToastContext';
 import type { AiChatMessage } from '../../modals/AiPromptModal';
 import { buildCodeBlockRules, buildCodeBlockSystemInstruction } from './codeBlockSyntaxHelper';
 import { markdownToHtml } from './editorMarkdownHelper';
 import { parseSearchReplaceBlocks, applySearchReplace, computeMinimalDiffRange } from './blockDiffEngine';
+
+const EMPTY_AI_MESSAGES: AiChatMessage[] = [];
 
 export type BlockAiType = 'blockquoteToggle' | 'toggleBlock' | 'codeBlock' | 'blockquote';
 
@@ -26,9 +29,7 @@ export function useBlockAiModal({
   updateAttributes,
   blockType,
 }: UseBlockAiModalProps) {
-  const storeCtx = useContext(StoreContext);
-  const state = storeCtx?.state || getStoreState();
-  const dispatch = storeCtx?.dispatch || getStoreDispatch();
+  const dispatch = useStoreDispatch();
 
   const [isOpen, setIsOpen] = useState(false);
   const [anchorPos, setAnchorPos] = useState<{ x: number; y: number } | null>(null);
@@ -38,13 +39,23 @@ export function useBlockAiModal({
   const [chatId] = useState<string>(() => `block_ai_${blockType}_${Math.random().toString(36).slice(2, 10)}`);
   const [localMessages, setLocalMessages] = useState<AiChatMessage[]>([]);
 
-  const activeTab = state.tabs.find((t) => t.id === state.activeTabId);
-  const pageId = activeTab?.pageId || null;
+  const pageId = useStoreSelector(
+    useCallback((s: AppState) => {
+      const tab = s.tabs.find((t) => t.id === s.activeTabId);
+      return tab?.pageId || null;
+    }, [])
+  );
+
+  // Only subscribe to stored chat messages when the block's AI modal is actually open
+  const storedMessages = useStoreSelector(
+    useCallback(
+      (s: AppState) => (isOpen ? s.aiChatSessions[chatId]?.messages ?? EMPTY_AI_MESSAGES : EMPTY_AI_MESSAGES),
+      [isOpen, chatId]
+    )
+  );
 
   const messages: AiChatMessage[] =
-    localMessages.length > 0
-      ? localMessages
-      : state.aiChatSessions[chatId]?.messages || [];
+    localMessages.length > 0 ? localMessages : storedMessages;
 
   const handleOpenAi = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();

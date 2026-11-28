@@ -1,7 +1,10 @@
+import { lazy, Suspense } from 'react';
 import type { VideoItem } from '../../../types';
-import VideoUploadModal, { type UploadOptions } from '../VideoUploadModal';
-import YouTubeDownloadModal from '../YouTubeDownloadModal';
-import WebVersionModal from '../WebVersionModal';
+import type { UploadOptions } from '../VideoUploadModal';
+
+const VideoUploadModal = lazy(() => import('../VideoUploadModal'));
+const YouTubeDownloadModal = lazy(() => import('../YouTubeDownloadModal'));
+const WebVersionModal = lazy(() => import('../WebVersionModal'));
 
 interface VideoViewModalsProps {
   showUploadModal: boolean;
@@ -31,7 +34,7 @@ export function VideoViewModals({
   onConfirmWebVersion
 }: VideoViewModalsProps) {
   return (
-    <>
+    <Suspense fallback={null}>
       {showUploadModal && (
         <VideoUploadModal 
           collectionId={selectedFolderId || undefined}
@@ -48,12 +51,14 @@ export function VideoViewModals({
         />
       )}
 
-      <WebVersionModal
-        isOpen={!!webVersionVideo}
-        onClose={onCloseWebVersionModal}
-        onConfirm={onConfirmWebVersion}
-        videoTitle={webVersionVideo?.title || ''}
-      />
-    </>
+      {webVersionVideo && (
+        <WebVersionModal
+          isOpen={true}
+          onClose={onCloseWebVersionModal}
+          onConfirm={onConfirmWebVersion}
+          videoTitle={webVersionVideo.title || ''}
+        />
+      )}
+    </Suspense>
   );
 }

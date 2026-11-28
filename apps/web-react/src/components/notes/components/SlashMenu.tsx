@@ -1,5 +1,6 @@
 import { Heading1, Heading2, Heading3, CheckSquare, List, Info, Type, Minus, Code, FileText, Folder, Table, HelpCircle, Sparkles, ListTree, Clock, FileArchive, Calendar, Film, BookOpen, Columns2, Columns3, FilePlus, Layers, Flame } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 interface SlashCommandItem {
   id: string;
@@ -150,19 +151,15 @@ export default function SlashMenu({ x, y, query, onSelect, onClose }: SlashMenuP
     positionStyle.top = y;
   }
 
-  if (filteredCommands.length === 0) {
-    return (
-      <div 
-        ref={menuRef}
-        className="fixed z-50 w-72 bg-dark-bg border border-white/[0.06] rounded-lg shadow-xl overflow-hidden p-3 text-dark-subtext text-sm text-center"
-        style={positionStyle}
-      >
-        Nenhum bloco encontrado
-      </div>
-    );
-  }
-
-  return (
+  const menuContent = filteredCommands.length === 0 ? (
+    <div 
+      ref={menuRef}
+      className="fixed z-50 w-72 bg-dark-bg border border-white/[0.06] rounded-lg shadow-xl overflow-hidden p-3 text-dark-subtext text-sm text-center"
+      style={positionStyle}
+    >
+      Nenhum bloco encontrado
+    </div>
+  ) : (
     <div
       ref={menuRef}
       className="fixed z-50 w-72 bg-dark-bg border border-white/[0.06] rounded-lg shadow-xl overflow-hidden animate-fade-in flex flex-col"
@@ -196,5 +193,9 @@ export default function SlashMenu({ x, y, query, onSelect, onClose }: SlashMenuP
       </div>
     </div>
   );
+
+  // Portal to document.body so ancestor transforms (e.g. .smooth-scroll-container)
+  // do not shift position: fixed viewport coordinates.
+  return typeof document !== 'undefined' ? createPortal(menuContent, document.body) : menuContent;
 }
 

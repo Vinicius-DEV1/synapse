@@ -100,7 +100,7 @@ export default function GroupShell({
       {showChrome && (
         <div
           contentEditable={false}
-          className="group-layout__toolbar absolute -top-3 right-0 z-30 flex items-center gap-0.5 rounded-lg border border-white/10 bg-dark-bg/95 p-1 shadow-2xl backdrop-blur-xl"
+          className="group-layout__toolbar absolute -top-3 right-0 z-30 flex items-center gap-0.5 rounded-lg border border-white/10 bg-dark-bg/95 p-1 shadow-2xl"
           onMouseDown={(event) => event.preventDefault()}
         >
           {childCount < spec.maxChildren && spec.groupName === 'columnGroup' && (
@@ -154,7 +154,7 @@ export default function GroupShell({
       {isResizing && previewWidths && (
         <div
           contentEditable={false}
-          className="pointer-events-none absolute -top-3 left-1/2 z-30 -translate-x-1/2 rounded-md bg-dark-bg/95 px-2 py-1 font-mono text-[11px] text-white shadow-lg backdrop-blur-xl"
+          className="pointer-events-none absolute -top-3 left-1/2 z-30 -translate-x-1/2 rounded-md bg-dark-bg/95 px-2 py-1 font-mono text-[11px] text-white shadow-lg"
         >
           {previewWidths.map((width) => `${Math.round(width)}%`).join(' · ')}
         </div>
@@ -189,7 +189,7 @@ function ChildControls({
   return (
     <div
       contentEditable={false}
-      className="group-layout__remove absolute -top-2 z-30 flex items-center gap-0.5 rounded-full border border-white/10 bg-dark-bg/95 px-0.5 shadow-lg backdrop-blur-xl"
+      className="group-layout__remove absolute -top-2 z-30 flex items-center gap-0.5 rounded-full border border-white/10 bg-dark-bg/95 px-0.5 shadow-lg"
       style={{ left: `${(start + end) / 2}px`, transform: 'translateX(-50%)' }}
     >
       <ChildButton

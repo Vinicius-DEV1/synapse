@@ -147,7 +147,7 @@ export default function DiagramsModule() {
             <div 
               key={diag.id}
               onClick={() => setActiveDiagram(diag)}
-              className="bg-dark-card border border-white/5 hover:border-indigo-500/50 hover:bg-white/5 p-6 rounded-2xl cursor-pointer transition-all group flex flex-col gap-4"
+              className="cv-auto-compact bg-dark-card border border-white/5 hover:border-indigo-500/50 hover:bg-white/5 p-6 rounded-2xl cursor-pointer transition-colors group flex flex-col gap-4"
             >
               <div className="flex items-start justify-between">
                 <div className="text-4xl">{diag.icon}</div>
@@ -156,7 +156,7 @@ export default function DiagramsModule() {
                     e.stopPropagation();
                     setDiagramToDelete(diag);
                   }}
-                  className="p-2 rounded-lg text-dark-subtext hover:bg-red-500/20 hover:text-red-400 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 transition-all"
+                  className="p-2 rounded-lg text-dark-subtext hover:bg-red-500/20 hover:text-red-400 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 transition-[opacity,background-color,color]"
                   title={t('diagrams.delete')}
                 >
                   <Trash2 className="w-4 h-4" />

@@ -108,7 +108,7 @@ export const CultureCardGrid = React.memo(function CultureCardGrid({
 
         {/* New release badge */}
         {hasNewRelease && (
-          <div className="absolute top-2 left-16 px-2 py-1 rounded bg-red-600/95 text-[10px] font-bold text-white uppercase tracking-wider flex items-center gap-1 shadow-lg shadow-red-500/50 animate-pulse">
+          <div className="absolute top-2 left-16 px-2 py-1 rounded bg-red-600/95 text-[10px] font-bold text-white uppercase tracking-wider flex items-center gap-1 shadow-lg shadow-red-500/50">
             <span className="w-1.5 h-1.5 bg-white rounded-full" />
             Novo
           </div>

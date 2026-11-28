@@ -1,18 +1,19 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { Loader2 } from 'lucide-react';
 import { LibraryHeader } from './ui/LibraryHeader';
 import { LibraryBulkActionsBar } from './ui/LibraryBulkActionsBar';
 import { LibraryActiveFilters } from './ui/LibraryActiveFilters';
 import type { LibraryBook, LibraryCollection, ReadingStatus } from '../../types';
 import LibraryGrid from './LibraryGrid';
-import {
-  BookEditModal,
-  DriveAuthModal,
-  ReadingStatsModal,
-  UploadResultModal,
-  LibraryCreateCollectionModal,
-} from './modals';
 import { LibraryReaderHost } from './LibraryReaderHost';
+
+const BookEditModal = lazy(() => import('./modals/BookEditModal'));
+const DriveAuthModal = lazy(() => import('./modals/DriveAuthModal'));
+const ReadingStatsModal = lazy(() => import('./modals/ReadingStatsModal'));
+const UploadResultModal = lazy(() => import('./modals/UploadResultModal'));
+const LibraryCreateCollectionModal = lazy(() =>
+  import('./modals/LibraryCreateCollectionModal').then((m) => ({ default: m.LibraryCreateCollectionModal }))
+);
 import { useStoreSelector, useStoreDispatch } from '../../store/useStore';
 import { useLibraryData } from './hooks/useLibraryData';
 import { useLibraryFilter } from './hooks/useLibraryFilter';
@@ -479,50 +480,52 @@ export default function LibraryView({ tabId }: { tabId?: string }) {
         onAssignCollection={handleBulkAssignCollection}
       />
 
-      {editingBook && (
-        <BookEditModal
-          book={editingBook}
-          allBooks={books}
-          collections={collections}
-          bookCollections={editingBook.collections?.map((c) => c.id) || []}
-          onSave={async () => {
-            setEditingBook(null);
-            await loadData();
-          }}
-          onClose={() => setEditingBook(null)}
-        />
-      )}
+      <Suspense fallback={null}>
+        {editingBook && (
+          <BookEditModal
+            book={editingBook}
+            allBooks={books}
+            collections={collections}
+            bookCollections={editingBook.collections?.map((c) => c.id) || []}
+            onSave={async () => {
+              setEditingBook(null);
+              await loadData();
+            }}
+            onClose={() => setEditingBook(null)}
+          />
+        )}
 
-      {isCreateCollectionOpen && (
-        <LibraryCreateCollectionModal
-          onSave={handleCreateCollection}
-          onClose={() => setIsCreateCollectionOpen(false)}
-        />
-      )}
+        {isCreateCollectionOpen && (
+          <LibraryCreateCollectionModal
+            onSave={handleCreateCollection}
+            onClose={() => setIsCreateCollectionOpen(false)}
+          />
+        )}
 
-      {editingCollectionModal && (
-        <LibraryCreateCollectionModal
-          initialCollection={editingCollectionModal}
-          onSave={handleSaveCollectionEdit}
-          onClose={() => setEditingCollectionModal(null)}
-        />
-      )}
+        {editingCollectionModal && (
+          <LibraryCreateCollectionModal
+            initialCollection={editingCollectionModal}
+            onSave={handleSaveCollectionEdit}
+            onClose={() => setEditingCollectionModal(null)}
+          />
+        )}
 
-      {showStats && <ReadingStatsModal onClose={() => setShowStats(false)} />}
+        {showStats && <ReadingStatsModal onClose={() => setShowStats(false)} />}
 
-      {showDriveAuth && (
-        <DriveAuthModal
-          onClose={() => setShowDriveAuth(false)}
-          onSuccess={() => setHasDriveAuth(true)}
-        />
-      )}
+        {showDriveAuth && (
+          <DriveAuthModal
+            onClose={() => setShowDriveAuth(false)}
+            onSuccess={() => setHasDriveAuth(true)}
+          />
+        )}
 
-      {uploadResult && (
-        <UploadResultModal
-          result={uploadResult}
-          onClose={() => setUploadResult(null)}
-        />
-      )}
+        {uploadResult && (
+          <UploadResultModal
+            result={uploadResult}
+            onClose={() => setUploadResult(null)}
+          />
+        )}
+      </Suspense>
     </div>
   );
 }
